@@ -6,12 +6,34 @@ import { ProfileSignInCta, ProfileView } from "@/components/profile/profile-view
 import { fetchProfileMe } from "@/lib/profile/profile-api";
 import type { PublicProfileResponse } from "@/lib/profile/types";
 import { RouteShell } from "@/components/layout/route-shell";
+import type { Brand } from "@/lib/experience-brand";
 
-export function ProfilePageClient() {
+type ProfileScope = "global" | "guess";
+
+type ProfilePageClientProps = {
+  brand?: Brand;
+  scope?: ProfileScope;
+};
+
+const shellCopy = {
+  global: {
+    title: "Codex Profile",
+    description: "Your global account overview across experiences and recent activity.",
+    signedOutDescription: "Sign in to view your Codex identity and progress across experiences.",
+  },
+  guess: {
+    title: "Guess Profile",
+    description: "Your Guess stats, records, and challenge history.",
+    signedOutDescription: "Sign in to view your Guess profile and performance history.",
+  },
+} as const;
+
+export function ProfilePageClient({ brand = "guess", scope = "global" }: ProfilePageClientProps) {
   const { user, isLoading, isConfigured } = useAuth();
   const [data, setData] = useState<PublicProfileResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const copy = shellCopy[scope];
 
   useEffect(() => {
     if (!isConfigured || isLoading) {
@@ -45,8 +67,8 @@ export function ProfilePageClient() {
   if (!isConfigured) {
     return (
       <RouteShell
-        title="Profile"
-        description="Account stats and recent readings."
+        title={copy.title}
+        description={copy.description}
       >
         <p className="text-sm text-[var(--mist)]">Auth is not configured in this build.</p>
       </RouteShell>
@@ -55,7 +77,7 @@ export function ProfilePageClient() {
 
   if (isLoading) {
     return (
-      <RouteShell title="Profile" description="Account stats and recent readings.">
+      <RouteShell title={copy.title} description={copy.description}>
         <p className="text-sm text-[var(--mist)]">Loading…</p>
       </RouteShell>
     );
@@ -64,17 +86,17 @@ export function ProfilePageClient() {
   if (!user) {
     return (
       <RouteShell
-        title="Profile"
-        description="Account stats and recent readings — optional; guest play is always here."
+        title={copy.title}
+        description={copy.signedOutDescription}
       >
-        <ProfileSignInCta />
+        <ProfileSignInCta brand={brand} />
       </RouteShell>
     );
   }
 
   if (loading || (data == null && !err)) {
     return (
-      <RouteShell title="Profile" description="Account stats and recent readings.">
+      <RouteShell title={copy.title} description={copy.description}>
         <p className="text-sm text-[var(--mist)]">Loading your profile…</p>
       </RouteShell>
     );
@@ -82,7 +104,7 @@ export function ProfilePageClient() {
 
   if (err) {
     return (
-      <RouteShell title="Profile" description="We could not load this profile.">
+      <RouteShell title={copy.title} description="We could not load this profile.">
         <p className="text-sm text-red-300/90" role="alert">
           {err}
         </p>
@@ -99,10 +121,21 @@ export function ProfilePageClient() {
 
   return (
     <RouteShell
-      title="Profile"
-      description="Your public tally and recent readings. Stats are visible to anyone with your link."
+      title={copy.title}
+      description={
+        scope === "global"
+          ? "Your Codex identity, global tally, and cross-experience activity."
+          : "Your Guess performance, records, and challenge trail."
+      }
     >
-      <ProfileView data={data} showEmail showPublicLink showShare />
+      <ProfileView
+        data={data}
+        showEmail
+        showPublicLink
+        showShare
+        brand={brand}
+        scope={scope}
+      />
     </RouteShell>
   );
 }

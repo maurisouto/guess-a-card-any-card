@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { RouteShell } from "@/components/layout/route-shell";
@@ -79,6 +78,7 @@ export default function CoopPage() {
       title="Circle of seers"
       description="One guess binds each veil: a fixed speaking order, the active seer alone may name the card, and if they are absent the host may voice the circle."
       className="max-w-3xl"
+      showReturnToHub
     >
       <ModeHowToPanel
         summaryLabel="How Co-op works"
@@ -129,11 +129,6 @@ export default function CoopPage() {
           {error}
         </p>
       ) : null}
-      <p className="mt-8 text-center text-xs text-[var(--mist)]">
-        <Link href="/" className="text-[var(--gold-dim)] underline-offset-4 hover:underline">
-          ← Home
-        </Link>
-      </p>
     </RouteShell>
   );
 }

@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import { GameLogo } from "@/components/brand/game-logo";
+import { usePathname } from "next/navigation";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { SiteHeaderLogo } from "@/components/layout/site-header-logo";
 import { SiteHeaderAuth } from "@/components/auth/site-header-auth";
+import { getBrandFromPathname, getProfilePathForBrand } from "@/lib/experience-brand";
 import { cn } from "@/lib/utils/cn";
 
 const mainModes = [
@@ -11,20 +15,26 @@ const mainModes = [
   { href: "/challenge", label: "Challenge" },
 ] as const;
 
-const accountLinks = [
+const staticAccountLinks = [
   { href: "/stats", label: "Stats" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/profile", label: "Profile" },
 ] as const;
 
 export function SiteHeader() {
+  const pathname = usePathname();
+  const brand = getBrandFromPathname(pathname);
+  const accountLinks = [
+    ...staticAccountLinks,
+    { href: getProfilePathForBrand(brand), label: "Profile" },
+  ] as const;
+
   return (
     <header className="relative z-20 border-b border-[var(--wine-deep)]/80 bg-gradient-to-b from-[var(--void)]/95 via-[var(--plum)]/90 to-[var(--void)]/85 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md">
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--gold)]/35 to-transparent" />
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 lg:gap-6 lg:px-6">
         {/* Logo */}
         <div className="flex shrink-0 items-center justify-start">
-          <GameLogo placement="header" />
+          <SiteHeaderLogo />
         </div>
 
         {/* Desktop nav — game modes (hidden below lg) */}

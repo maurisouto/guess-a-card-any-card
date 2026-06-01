@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { RouteShell } from "@/components/layout/route-shell";
@@ -82,6 +81,7 @@ export default function CompetitiveLobbyPage() {
       title="Rival auguries"
       description="Every soul beholds the same veil. When all racing rivals have sealed a guess — or the hourglass empties — the next truth is shown. Fewest attempts wins; ties break on least total time."
       className="max-w-3xl"
+      showReturnToHub
     >
       <ModeHowToPanel
         summaryLabel="How Competitive works"
@@ -132,11 +132,6 @@ export default function CompetitiveLobbyPage() {
           {error}
         </p>
       ) : null}
-      <p className="mt-8 text-center text-xs text-[var(--mist)]">
-        <Link href="/" className="text-[var(--gold-dim)] underline-offset-4 hover:underline">
-          ← Home
-        </Link>
-      </p>
     </RouteShell>
   );
 }

@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-context";
 import { LoginModal } from "@/components/auth/login-modal";
+import {
+  getBrandFromPathname,
+  getProfilePathForBrand,
+  getPublicProfilePathForBrand,
+} from "@/lib/experience-brand";
 import { cn } from "@/lib/utils/cn";
 
 function displayLabel(user: {
@@ -37,6 +43,11 @@ function avatarUrl(user: {
 }
 
 export function SiteHeaderAuth() {
+  const pathname = usePathname();
+  const brand = getBrandFromPathname(pathname);
+  const profileHref = getProfilePathForBrand(brand);
+  const isCodex = brand === "codex";
+  const isFragments = brand === "fragments";
   const { user, isLoading, isConfigured, signOut } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,7 +55,14 @@ export function SiteHeaderAuth() {
   if (isLoading) {
     return (
       <div
-        className="h-10 w-10 shrink-0 rounded-full border border-[var(--gold)]/25 bg-[var(--plum-mid)]/60"
+        className={cn(
+          "h-10 w-10 shrink-0 rounded-full border",
+          isCodex
+            ? "border-[#60A5FA]/30 bg-[#121826]/65"
+            : isFragments
+              ? "border-[#2F7F5F]/40 bg-[#0F1F1A]/70"
+            : "border-[var(--gold)]/25 bg-[var(--plum-mid)]/60",
+        )}
         aria-hidden
       />
     );
@@ -60,13 +78,21 @@ export function SiteHeaderAuth() {
           className={cn(
             "rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-colors sm:text-sm",
             isConfigured
-              ? "border border-[var(--gold)]/55 text-[var(--gold-bright)] hover:border-[var(--gold-bright)]/80 hover:bg-[var(--wine)]/40"
-              : "cursor-not-allowed border border-[var(--wine-deep)]/80 text-[var(--mist)]",
+              ? isCodex
+                ? "border border-[#60A5FA]/55 text-[#D8E7FF] hover:border-[#60A5FA]/85 hover:bg-[#1b2740]/55"
+                : isFragments
+                  ? "border border-[#4ADE80]/45 text-[#DDFEEA] hover:border-[#86EFAC]/75 hover:bg-[#17352b]/60"
+                : "border border-[var(--gold)]/55 text-[var(--gold-bright)] hover:border-[var(--gold-bright)]/80 hover:bg-[var(--wine)]/40"
+              : isCodex
+                ? "cursor-not-allowed border border-[#24324f]/90 text-[#8da1c8]"
+                : isFragments
+                  ? "cursor-not-allowed border border-[#1d3a30]/90 text-[#86a998]"
+                : "cursor-not-allowed border border-[var(--wine-deep)]/80 text-[var(--mist)]",
           )}
         >
           Sign in
         </button>
-        <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+        <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} brand={brand} />
       </>
     );
   }
@@ -80,7 +106,14 @@ export function SiteHeaderAuth() {
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--gold)]/45 bg-[var(--plum-mid)]/80 text-sm font-semibold text-[var(--gold-bright)] shadow-[0_0_16px_rgba(201,162,39,0.2)] transition-[box-shadow,transform] hover:scale-[1.03] hover:shadow-[0_0_24px_rgba(201,162,39,0.35)]"
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 text-sm font-semibold transition-[box-shadow,transform] hover:scale-[1.03]",
+          isCodex
+            ? "border-[#60A5FA]/45 bg-[#121826]/85 text-[#DDEBFF] shadow-[0_0_16px_rgba(59,130,246,0.2)] hover:shadow-[0_0_24px_rgba(96,165,250,0.35)]"
+            : isFragments
+              ? "border-[#4ADE80]/45 bg-[#0F1F1A]/85 text-[#DDFEEA] shadow-[0_0_14px_rgba(74,222,128,0.18)] hover:shadow-[0_0_22px_rgba(134,239,172,0.3)]"
+            : "border-[var(--gold)]/45 bg-[var(--plum-mid)]/80 text-[var(--gold-bright)] shadow-[0_0_16px_rgba(201,162,39,0.2)] hover:shadow-[0_0_24px_rgba(201,162,39,0.35)]",
+        )}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
         aria-label={`Account menu for ${label}`}
@@ -109,25 +142,64 @@ export function SiteHeaderAuth() {
           />
           <div
             role="menu"
-            className="absolute right-0 z-40 mt-2 min-w-[11rem] rounded-md border border-[var(--wine-deep)]/90 bg-[var(--void)]/95 py-1 shadow-lg backdrop-blur-md"
+            className={cn(
+              "absolute right-0 z-40 mt-2 min-w-[11rem] rounded-md py-1 shadow-lg backdrop-blur-md",
+              isCodex
+                ? "border border-[#60A5FA]/28 bg-[#0B0D12]/95"
+                : isFragments
+                  ? "border border-[#2F7F5F]/36 bg-[#0B1210]/95"
+                : "border border-[var(--wine-deep)]/90 bg-[var(--void)]/95",
+            )}
           >
-            <p className="border-b border-[var(--wine-deep)]/60 px-3 py-2 text-xs text-[var(--mist)]">
-              <span className="block truncate font-medium text-[var(--parchment)]">
+            <p
+              className={cn(
+                "border-b px-3 py-2 text-xs",
+                isCodex
+                  ? "border-[#60A5FA]/18 text-[#9fb4dd]"
+                  : isFragments
+                    ? "border-[#2F7F5F]/25 text-[#97c8b0]"
+                    : "border-[var(--wine-deep)]/60 text-[var(--mist)]",
+              )}
+            >
+              <span
+                className={cn(
+                  "block truncate font-medium",
+                  isCodex
+                    ? "text-[#E6EEFF]"
+                    : isFragments
+                      ? "text-[#E7FFF0]"
+                      : "text-[var(--parchment)]",
+                )}
+              >
                 {label}
               </span>
             </p>
             <Link
-              href="/profile"
+              href={profileHref}
               role="menuitem"
-              className="block px-3 py-2 text-sm text-[var(--parchment)] hover:bg-[var(--wine)]/50"
+              className={cn(
+                "block px-3 py-2 text-sm",
+                isCodex
+                  ? "text-[#E6EEFF] hover:bg-[#1a2338]/70"
+                  : isFragments
+                    ? "text-[#E7FFF0] hover:bg-[#17352b]/70"
+                    : "text-[var(--parchment)] hover:bg-[var(--wine)]/50",
+              )}
               onClick={() => setMenuOpen(false)}
             >
-              Profile
+              {isFragments ? "Your archive" : "Profile"}
             </Link>
             <Link
-              href={`/u/${user.id}`}
+              href={getPublicProfilePathForBrand(user.id, brand)}
               role="menuitem"
-              className="block px-3 py-2 text-sm text-[var(--mist)] hover:bg-[var(--wine)]/50"
+              className={cn(
+                "block px-3 py-2 text-sm",
+                isCodex
+                  ? "text-[#AFC3EC] hover:bg-[#1a2338]/70"
+                  : isFragments
+                    ? "text-[#BDE9CF] hover:bg-[#17352b]/70"
+                    : "text-[var(--mist)] hover:bg-[var(--wine)]/50",
+              )}
               onClick={() => setMenuOpen(false)}
             >
               Public link
@@ -135,7 +207,14 @@ export function SiteHeaderAuth() {
             <button
               type="button"
               role="menuitem"
-              className="w-full px-3 py-2 text-left text-sm text-[var(--parchment)] hover:bg-[var(--wine)]/50"
+              className={cn(
+                "w-full px-3 py-2 text-left text-sm",
+                isCodex
+                  ? "text-[#E6EEFF] hover:bg-[#1a2338]/70"
+                  : isFragments
+                    ? "text-[#E7FFF0] hover:bg-[#17352b]/70"
+                    : "text-[var(--parchment)] hover:bg-[var(--wine)]/50",
+              )}
               onClick={async () => {
                 setMenuOpen(false);
                 await signOut();

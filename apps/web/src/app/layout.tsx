@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cinzel, Geist_Mono, Inter } from "next/font/google";
+import { Cinzel, Cinzel_Decorative, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/app/providers";
 import { siteConfig } from "@/lib/config/site";
@@ -14,6 +14,13 @@ const cinzel = Cinzel({
   variable: "--font-cinzel",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const cinzelDecorative = Cinzel_Decorative({
+  variable: "--font-cinzel-decorative",
+  subsets: ["latin"],
+  weight: ["400", "700"],
   display: "swap",
 });
 
@@ -38,9 +45,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${cinzel.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${cinzel.variable} ${cinzelDecorative.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="magical-app-bg text-parchment min-h-full flex flex-col font-sans">
+      <body className="bg-[var(--void-deep)] text-parchment min-h-full flex flex-col font-sans">
         <Providers>{children}</Providers>
       </body>
     </html>

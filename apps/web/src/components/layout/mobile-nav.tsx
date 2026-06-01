@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { getBrandFromPathname, getProfilePathForBrand } from "@/lib/experience-brand";
 import { cn } from "@/lib/utils/cn";
 
-const navGroups = [
+const guessNavGroups = [
   {
     label: "Play",
     links: [
@@ -20,7 +21,24 @@ const navGroups = [
     links: [
       { href: "/stats", label: "Stats" },
       { href: "/leaderboard", label: "Leaderboard" },
-      { href: "/profile", label: "Profile" },
+    ],
+  },
+] as const;
+
+const fragmentsNavGroups = [
+  {
+    label: "Fragments",
+    links: [
+      { href: "/puzzle", label: "Play" },
+      { href: "/puzzle/profile", label: "Your archive" },
+      { href: "/puzzle/leaderboard", label: "Hall of records" },
+    ],
+  },
+  {
+    label: "Codex",
+    links: [
+      { href: "/", label: "Hub" },
+      { href: "/profile", label: "Reader profile" },
     ],
   },
 ] as const;
@@ -28,6 +46,18 @@ const navGroups = [
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const brand = getBrandFromPathname(pathname);
+  const groups =
+    brand === "fragments"
+      ? fragmentsNavGroups
+      : guessNavGroups.map((group) =>
+          group.label === "Account"
+            ? {
+                ...group,
+                links: [...group.links, { href: getProfilePathForBrand(brand), label: "Profile" }],
+              }
+            : group,
+        );
 
   // Close menu on navigation
   useEffect(() => {
@@ -51,7 +81,12 @@ export function MobileNav() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative z-10 flex h-9 w-9 items-center justify-center rounded-md text-[var(--parchment-dim)] transition-colors hover:bg-[var(--wine)]/40 hover:text-[var(--gold-bright)] lg:hidden"
+        className={cn(
+          "relative z-10 flex h-9 w-9 items-center justify-center rounded-md transition-colors lg:hidden",
+          brand === "fragments"
+            ? "text-[#86efac]/80 hover:bg-[#17352b]/55 hover:text-[#d9ffe8]"
+            : "text-[var(--parchment-dim)] hover:bg-[var(--wine)]/40 hover:text-[var(--gold-bright)]",
+        )}
         aria-label={open ? "Close navigation" : "Open navigation"}
         aria-expanded={open}
         aria-haspopup="true"
@@ -95,15 +130,21 @@ export function MobileNav() {
             aria-label="Mobile navigation"
             className={cn(
               "absolute left-0 right-0 top-full z-40",
-              "border-b border-[var(--wine-deep)]/80",
-              "bg-gradient-to-b from-[var(--void)]/98 to-[var(--plum)]/96",
               "shadow-[0_20px_48px_rgba(0,0,0,0.65)] backdrop-blur-md",
+              brand === "fragments"
+                ? "border-b border-[#2F7F5F]/45 bg-gradient-to-b from-[#0b1210]/98 to-[#0a1512]/96"
+                : "border-b border-[var(--wine-deep)]/80 bg-gradient-to-b from-[var(--void)]/98 to-[var(--plum)]/96",
             )}
           >
             <div className="mx-auto max-w-6xl px-4 py-4">
-              {navGroups.map((group, gi) => (
-                <div key={group.label} className={cn(gi > 0 && "mt-3 border-t border-[var(--wine-deep)]/40 pt-3")}>
-                  <p className="mb-2 px-1 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-[var(--mist)]/60">
+              {groups.map((group, gi) => (
+                <div key={group.label} className={cn(gi > 0 && "mt-3 border-t pt-3", brand === "fragments" ? "border-[#214537]/50" : "border-[var(--wine-deep)]/40")}>
+                  <p
+                    className={cn(
+                      "mb-2 px-1 text-[0.6rem] font-semibold uppercase tracking-[0.18em]",
+                      brand === "fragments" ? "text-[#7aab92]/85" : "text-[var(--mist)]/60",
+                    )}
+                  >
                     {group.label}
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -115,9 +156,13 @@ export function MobileNav() {
                           href={href}
                           className={cn(
                             "rounded-lg px-3 py-3.5 text-sm font-medium transition-colors",
-                            active
-                              ? "bg-[var(--wine)]/60 text-[var(--gold-bright)]"
-                              : "text-[var(--parchment)] hover:bg-[var(--wine)]/40 hover:text-[var(--gold-bright)] active:bg-[var(--wine)]/60",
+                            brand === "fragments"
+                              ? active
+                                ? "bg-[#1a3d2e]/75 text-[#d9ffe8]"
+                                : "text-[#c5f2d9] hover:bg-[#17352b]/55 hover:text-[#e8fff1] active:bg-[#1a3d2e]/65"
+                              : active
+                                ? "bg-[var(--wine)]/60 text-[var(--gold-bright)]"
+                                : "text-[var(--parchment)] hover:bg-[var(--wine)]/40 hover:text-[var(--gold-bright)] active:bg-[var(--wine)]/60",
                           )}
                         >
                           {label}

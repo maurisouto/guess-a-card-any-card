@@ -228,6 +228,32 @@ describe("card-catalog-service", () => {
     expect(pick?.name).toBe("D");
   });
 
+  it("getRandomCard: same seed yields the same card (sorted pool)", () => {
+    const source: Card[] = [
+      fab({
+        name: "A",
+        cardIdentifier: "a-red",
+        printings: [printing({ identifier: "1", set: Release.Monarch, image: "a" })],
+      }),
+      fab({
+        name: "B",
+        cardIdentifier: "b-red",
+        printings: [printing({ identifier: "2", set: Release.Monarch, image: "b" })],
+      }),
+      fab({
+        name: "C",
+        cardIdentifier: "c-red",
+        printings: [printing({ identifier: "3", set: Release.Monarch, image: "c" })],
+      }),
+    ];
+    __applyCatalogForTests(buildCatalogFromFaBCards(source));
+
+    const first = getRandomCard([], [], "phase-four-seed");
+    const second = getRandomCard([], [], "phase-four-seed");
+    expect(first?.id).toBe(second?.id);
+    expect(first).not.toBeNull();
+  });
+
   it("getRandomCard: when every card is excluded, falls back to unfiltered pool", () => {
     const source: Card[] = [
       fab({

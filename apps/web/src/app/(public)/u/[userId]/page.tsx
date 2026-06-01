@@ -44,5 +44,5 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicUserProfilePage({ params }: PageProps) {
   const { userId } = await params;
-  return <PublicProfileClient userId={userId} />;
+  return <PublicProfileClient userId={userId} brand="codex" scope="global" />;
 }
