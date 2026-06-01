@@ -1,48 +1,70 @@
 # Guess a Card, Any Card
 
-Next.js game client for **Flesh and Blood**-style veiled-card guessing (single-player, coop, and more). Shares a PostgreSQL database with **`image-guess-admin`**.
+Monorepo for **Codex of Rathe** (hub), **Guess the Card** (veiled FAB card guessing), and **Fragments of Rathe** (card puzzles).  
+Card content comes from **`@flesh-and-blood/cards`** via an in-memory catalog loaded at API startup.
+
+> **Nuevo maintainer / otro Cursor:** empezá por **[docs/HANDOFF.md](./docs/HANDOFF.md)** (traspaso, setup, mapa del producto).  
+> Agentes: **[AGENTS.md](./AGENTS.md)** · Arquitectura: **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** · Fragments: **[docs/FRAGMENTS.md](./docs/FRAGMENTS.md)**
 
 ## Monorepo
 
-- **`apps/web`** — Next.js UI (típico: **Vercel**).
-- **`apps/api`** — Hono + Prisma + REST bajo `/api/*` (típico: **Render** u otro Node).
-- **`packages/shared`** — Tipos compartidos (p. ej. snapshot co-op, protocolo WebSocket).
+| Package | Role | Deploy típico |
+|---------|------|----------------|
+| `apps/web` | Next.js UI | **Vercel** |
+| `apps/api` | Hono + Prisma + REST `/api/*` | **Render** / Netlify Functions |
+| `packages/shared` | Tipos compartidos (reveal, co-op WS) | (no se despliega solo) |
 
-Qué se genera localmente y qué no va a git: **[docs/generated-files.md](./docs/generated-files.md)**.
+Artefactos generados: **[docs/generated-files.md](./docs/generated-files.md)**.
+
+## Experiencias (rutas principales)
+
+| Experiencia | Rutas | API |
+|-------------|-------|-----|
+| Codex (hub) | `/`, `/profile`, `/u/[userId]` | `/api/profile`, … |
+| Guess | `/guess`, `/single`, `/challenge`, `/coop`, `/competitive`, `/leaderboard`, `/stats` | `/api/single`, `/api/challenges`, `/api/leaderboard`, … |
+| Fragments | `/puzzle`, `/puzzle/profile`, `/puzzle/leaderboard` | `/api/fragments/*` |
 
 ## Setup local
 
 ```bash
 npm install
-cp .env.example .env    # DATABASE_URL para la API; ver comentarios por app
+cp .env.example .env    # DATABASE_URL; Supabase si usás auth — ver comentarios
 npm run db:deploy       # migraciones (workspace @gac/api)
 ```
 
-**Solo front** (sin API, no hay datos):
+**Solo front** (sin API, no hay datos reales):
 
 ```bash
 npm run dev --workspace=@gac/web
 ```
 
-**API + front** (recomendado): terminal A `npm run dev:api`, terminal B `npm run dev` (web). En **desarrollo**, Next ya reenvía `/api/*` a `http://127.0.0.1:8787` por defecto; podés sobreescribir con `API_PROXY_TARGET` en `apps/web/.env.local` si la API corre en otro host/puerto.
+**API + front** (recomendado):
 
-**Prisma:** esquema y migraciones en **`apps/api/prisma`**. El cliente se genera en `apps/api/src/generated/prisma` (ignorado por git). En `apps/api/prisma.config.ts`, `DATABASE_URL` puede faltar solo para `prisma generate` en entornos sin DB.
+```bash
+# Terminal A
+npm run dev:api
+
+# Terminal B
+npm run dev
+```
+
+En desarrollo, Next reenvía `/api/*` a `http://127.0.0.1:8787` por defecto. Override: `API_PROXY_TARGET` en `apps/web/.env.local`.
+
+**Prisma:** esquema en `apps/api/prisma`. Cliente generado en `apps/api/src/generated/prisma` (gitignored). `prisma generate` puede correr sin DB vía `apps/api/prisma.config.ts`.
 
 ## Database & migrations
 
-This repository **owns** Prisma migrations for the **shared** database. **`image-guess-admin` must not** run `prisma migrate dev` / author divergent migration history against that database; it mirrors our `apps/api/prisma/migrations/` after each merge and runs `npx prisma generate`.
-
-**Deploy:** run migrations as part of the API release:
+Este repositorio **es la fuente de verdad** de migraciones Prisma para la base del juego.
 
 ```bash
 npm run db:deploy
 ```
 
-Full policy, admin sync checklist, and references: **[docs/database.md](./docs/database.md)**.
+Política y modelo catálogo-en-runtime: **[docs/database.md](./docs/database.md)**.
 
-## Deploy (staging / producción)
+## Deploy
 
-Front **Vercel**, API **Render** (u otro), variables y proxy: **[docs/deploy.md](./docs/deploy.md)**.
+Front **Vercel**, API **Render** o **Netlify**, variables y proxy: **[docs/deploy.md](./docs/deploy.md)**.
 
 ## Scripts (raíz)
 
@@ -51,12 +73,24 @@ Front **Vercel**, API **Render** (u otro), variables y proxy: **[docs/deploy.md]
 | `npm run dev` / `dev:web` | Next en `apps/web` |
 | `npm run dev:api` | Hono en `apps/api` (puerto 8787 o `PORT`) |
 | `npm run build` / `start` | Build y `next start` del web |
-| `npm run start:api` | API en producción (`tsx`) |
+| `npm run start:api` | API en producción |
 | `npm run lint` | ESLint del web |
-| `npm test` | Vitest (web + shared) |
+| `npm test` | Vitest (web + api + shared) |
 | `npm run db:*` | Prisma vía workspace `@gac/api` |
 | `npm run realtime:dev` | Servidor WS co-op (workspace API) |
 
+## Documentación
+
+| Documento | Contenido |
+|-----------|-----------|
+| [docs/HANDOFF.md](./docs/HANDOFF.md) | **Traspaso / onboarding** |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Arquitectura técnica |
+| [docs/FRAGMENTS.md](./docs/FRAGMENTS.md) | Fragments of Rathe |
+| [docs/BLUEPRINT_PRO.md](./docs/BLUEPRINT_PRO.md) | Visión de producto (§0.1 = modelo actual) |
+| [docs/deploy.md](./docs/deploy.md) | Hosting |
+| [docs/database.md](./docs/database.md) | Postgres y migraciones |
+| [AGENTS.md](./AGENTS.md) | Instrucciones para Cursor / agentes |
+
 ## Learn more
 
-- [Next.js Documentation](https://nextjs.org/docs)
+- [Next.js Documentation](https://nextjs.org/docs) — este proyecto usa **Next 16**; ver también `node_modules/next/dist/docs/`.

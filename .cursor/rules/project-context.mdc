@@ -1,0 +1,43 @@
+---
+description: Contexto del monorepo Guess a Card / Codex / Fragments — leer antes de cambios amplios
+alwaysApply: true
+---
+
+# Project context
+
+## Start here
+
+- Onboarding (Spanish): `docs/HANDOFF.md`
+- Architecture: `docs/ARCHITECTURE.md`
+- Fragments feature map: `docs/FRAGMENTS.md`
+- Agent rules: `AGENTS.md`
+
+## Stack
+
+- Monorepo: `apps/web` (Next 16), `apps/api` (Hono + Prisma 7), `packages/shared`
+- Local: `npm run dev:api` + `npm run dev`; tests: `npm test`
+- Cards: `@flesh-and-blood/cards` loaded in memory at API boot — not puzzle DB tables
+
+## Three products (do not merge)
+
+1. **Codex** — `/`, `/profile`
+2. **Guess** — `/single`, `/challenge`, `/leaderboard`, `/api/leaderboard`
+3. **Fragments** — `/puzzle/*`, `/api/fragments/*` (separate stats & leaderboards)
+
+Brand routing: `apps/web/src/lib/experience-brand.ts`
+
+## Before editing Next.js
+
+Read `node_modules/next/dist/docs/` — this is Next 16, not legacy App Router assumptions.
+
+## Constraints (common tasks)
+
+- Minimal diffs; match existing patterns; no commits unless user asks
+- Fragments phases: do not change Guess leaderboard/stats unless explicitly requested
+- Fragments completions are client-trusted in v1 (no server puzzle verification yet)
+
+## Key Fragments files
+
+- API: `apps/api/src/server/fragments-routes.ts`, `fragments-service.ts`, `fragments-leaderboard-service.ts`
+- Web: `apps/web/src/features/fragments/`, `apps/web/src/lib/fragments/`
+- UI shell: `apps/web/src/components/layout/fragments-header.tsx`
