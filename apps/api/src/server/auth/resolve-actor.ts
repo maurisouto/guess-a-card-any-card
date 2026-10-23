@@ -1,6 +1,7 @@
 import { actorToPlayerIdentity, type Actor, type UserActor } from "@/lib/actor";
 import type { PlayerIdentity } from "@/lib/player-identity";
 import { ensureLocalUserForAuth } from "@/server/auth/ensure-local-user";
+import { GuestSessionError, resolveGuestSessionValue } from "@/server/auth/guest-session";
 import { RequestIdentityError } from "@/server/auth/request-identity-error";
 import {
   verifySupabaseAccessToken,
@@ -32,7 +33,8 @@ async function defaultVerifyAccessToken(
 
 /**
  * Resolves the caller as UserActor (verified JWT) or GuestActor (`x-guest-id`).
- * JWT wins when present and verifiable; invalid JWT falls back to guest when `x-guest-id` is set.
+ * A guest identity is accepted only when no bearer token was supplied. Invalid bearer tokens
+ * must not silently downgrade an authenticated request to a guest request.
  */
 export async function resolveActorFromRequest(
   headers: Headers,
@@ -50,11 +52,20 @@ export async function resolveActorFromRequest(
       });
       return { kind: "user", userId: verified.sub };
     }
+
+    throw new RequestIdentityError(401, "Invalid or expired access token.");
   }
 
-  const rawGuest = headers.get("x-guest-id")?.trim() ?? "";
-  if (rawGuest.length > 0) {
-    return { kind: "guest", guestId: rawGuest };
+  const rawGuest = headers.get("x-guest-id");
+  if (rawGuest?.trim()) {
+    try {
+      return { kind: "guest", guestId: resolveGuestSessionValue(rawGuest) };
+    } catch (e) {
+      if (e instanceof GuestSessionError) {
+        throw new RequestIdentityError(e.status, e.message);
+      }
+      throw e;
+    }
   }
 
   throw new RequestIdentityError(

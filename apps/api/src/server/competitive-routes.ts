@@ -13,11 +13,14 @@ import {
   updateCompetitiveSelectedSets,
   updateCompetitiveTimer,
 } from "@/server/services/competitive-service";
+import { resolveGuestSessionValue } from "@/server/auth/guest-session";
 
 function requireGuestHeader(c: { req: { header: (n: string) => string | undefined } }): string {
-  const gid = c.req.header("x-guest-id")?.trim();
-  if (!gid) throw new CompetitiveHttpError(400, "Missing X-Guest-Id header.");
-  return gid;
+  try {
+    return resolveGuestSessionValue(c.req.header("x-guest-id"));
+  } catch (e) {
+    throw new CompetitiveHttpError(401, e instanceof Error ? e.message : "Invalid guest session.");
+  }
 }
 
 function handleErr(c: Context, e: unknown) {

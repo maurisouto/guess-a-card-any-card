@@ -15,6 +15,7 @@ import {
   type ServerToClientMessage,
 } from "@gac/shared";
 import { getCoopRoomPublic, CoopHttpError } from "../src/server/services/coop-service";
+import { resolveGuestSessionValue } from "../src/server/auth/guest-session";
 
 const PORT = Number(process.env.COOP_REALTIME_PORT ?? "3010") || 3010;
 const NOTIFY_SECRET = process.env.COOP_REALTIME_SECRET?.trim();
@@ -182,7 +183,20 @@ wss.on("connection", (ws: WebSocket) => {
         );
         return;
       }
-      addSocket(ws, parsed.roomId, parsed.guestId);
+      let guestId: string;
+      try {
+        guestId = resolveGuestSessionValue(parsed.guestId);
+      } catch (err) {
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            code: "GUEST_AUTH",
+            message: err instanceof Error ? err.message : "Invalid guest session.",
+          }),
+        );
+        return;
+      }
+      addSocket(ws, parsed.roomId, guestId);
       await pushSnapshot(ws);
     }
   });

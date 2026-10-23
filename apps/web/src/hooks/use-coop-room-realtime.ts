@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { COOP_WS_PROTOCOL_VERSION, type CoopRoomSnapshot } from "@gac/shared";
+import { getOrCreateGuestToken } from "@/lib/coop/guest-id";
 
 export type UseCoopRoomRealtimeOptions = {
   wsUrl: string | undefined;
@@ -59,13 +60,14 @@ export function useCoopRoomRealtime(options: UseCoopRoomRealtimeOptions): void {
         return;
       }
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
         attempt = 0;
+        const guestToken = await getOrCreateGuestToken();
         ws?.send(
           JSON.stringify({
             type: "subscribe",
             roomId,
-            guestId,
+            guestId: guestToken,
             protocol: COOP_WS_PROTOCOL_VERSION,
           }),
         );

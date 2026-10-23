@@ -9,21 +9,34 @@ import { meRoutes } from "@/server/me-routes";
 import { profileRoutes } from "@/server/profile-routes";
 import { catalogRoutes } from "@/server/catalog-routes";
 import { singlePlayerRoutes } from "@/server/single-player-routes";
+import { guestRoutes } from "@/server/guest-routes";
 import { initCardCatalog } from "@/server/services/card-catalog-service";
 
 initCardCatalog();
 
-const allowedOrigins =
+const configuredOrigins =
   process.env.CORS_ORIGIN?.split(",")
     .map((s) => s.trim())
     .filter(Boolean) ?? null;
+
+if (process.env.NODE_ENV === "production" && (!configuredOrigins || configuredOrigins.length === 0)) {
+  throw new Error("CORS_ORIGIN must be configured in production.");
+}
+if (process.env.NODE_ENV === "production" && !process.env.GUEST_TOKEN_SECRET?.trim()) {
+  throw new Error("GUEST_TOKEN_SECRET must be configured in production.");
+}
+
+const allowedOrigins =
+  configuredOrigins && configuredOrigins.length > 0
+    ? configuredOrigins
+    : ["http://localhost:3000", "http://127.0.0.1:3000"];
 
 const app = new Hono().basePath("/api");
 
 app.use(
   "/*",
   cors({
-    origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : "*",
+    origin: (origin) => (allowedOrigins.includes(origin) ? origin : ""),
     allowHeaders: ["Content-Type", "Authorization", "x-guest-id"],
   }),
 );
@@ -41,5 +54,6 @@ app.route("/challenges", challengeRoutes);
 app.route("/catalog", catalogRoutes);
 app.route("/fragments", fragmentsRoutes);
 app.route("/single", singlePlayerRoutes);
+app.route("/guest", guestRoutes);
 
 export { app };
