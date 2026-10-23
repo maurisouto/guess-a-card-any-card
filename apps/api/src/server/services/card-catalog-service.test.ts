@@ -45,7 +45,7 @@ describe("card-catalog-service", () => {
     initCardCatalog();
   });
 
-  it("filters out tokens, marvel, promo, cold/gold foil, back images, and missing art", () => {
+  it("filters excluded cards and keeps cold/gold foil when they are the only playable printing", () => {
     const source: Card[] = [
       fab({
         name: "Playable",
@@ -146,8 +146,13 @@ describe("card-catalog-service", () => {
     ];
 
     const { allCards } = buildCatalogFromFaBCards(source);
-    expect(allCards).toHaveLength(1);
-    expect(allCards[0]!.name).toBe("Playable");
+    expect(allCards).toHaveLength(3);
+    expect(allCards.map((card) => card.name)).toEqual(["Cold", "Gold", "Playable"]);
+    expect(allCards.map((card) => card.id)).toEqual([
+      "cold-x::0::C1",
+      "gold-x::0::G1",
+      "playable-red::0::P1",
+    ]);
   });
 
   it("derives sorted set keys from playable printings", () => {
