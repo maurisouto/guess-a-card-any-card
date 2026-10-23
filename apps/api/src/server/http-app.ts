@@ -11,6 +11,7 @@ import { catalogRoutes } from "@/server/catalog-routes";
 import { singlePlayerRoutes } from "@/server/single-player-routes";
 import { guestRoutes } from "@/server/guest-routes";
 import { initCardCatalog } from "@/server/services/card-catalog-service";
+import { createApiProtectionMiddleware } from "@/server/api-protection";
 
 initCardCatalog();
 
@@ -32,6 +33,8 @@ const allowedOrigins =
     : ["http://localhost:3000", "http://127.0.0.1:3000"];
 
 const app = new Hono().basePath("/api");
+
+app.use("/*", createApiProtectionMiddleware());
 
 app.use(
   "/*",
