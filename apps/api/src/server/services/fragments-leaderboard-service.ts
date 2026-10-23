@@ -1,14 +1,14 @@
 /**
  * Fragments-only leaderboards (Phase 6).
  *
- * Limitations: completion payloads are client-trusted (same as profile). Rows use only light
- * validity gates (time/move bounds) to hide obvious garbage — not an anti-cheat system.
+ * Completion rows are inserted only after the backend replays their move proof. The bounds below
+ * remain a defense-in-depth filter for rows created by older deployments.
  */
 import { FragmentPuzzleDifficulty, FragmentPuzzleMode, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { FragmentsHttpError } from "@/server/services/fragments-service";
 
-/** v1: client-submitted runs are trusted; these bounds reduce obvious garbage rows only. */
+/** Defense-in-depth bounds for legacy rows and malformed historical data. */
 export const FRAGMENTS_LB_MIN_TIME_MS = 500;
 export const FRAGMENTS_LB_MAX_TIME_MS = 86_400_000;
 export const FRAGMENTS_LB_MIN_MOVES = 1;

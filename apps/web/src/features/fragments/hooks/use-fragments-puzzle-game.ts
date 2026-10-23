@@ -74,6 +74,12 @@ export function useFragmentsPuzzleGame() {
   const startedAtRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const completionHandledRef = useRef(false);
+  const completionActionsRef = useRef<
+    Array<
+      | { kind: "fragment"; pieceId: string; slotId: string }
+      | { kind: "sliding"; tileId: number }
+    >
+  >([]);
 
   const stopTimer = useCallback(() => {
     if (rafRef.current != null) {
@@ -108,6 +114,7 @@ export function useFragmentsPuzzleGame() {
   const goToSetup = useCallback(() => {
     stopTimer();
     completionHandledRef.current = false;
+    completionActionsRef.current = [];
     setPhase("setup");
     setFragmentState(null);
     setSlidingState(null);
@@ -254,6 +261,7 @@ export function useFragmentsPuzzleGame() {
         moves: finalStats.moves,
         seed: activeSeed,
         templateId: mode === "fragments" ? activeTemplateId ?? null : null,
+        actions: completionActionsRef.current,
       });
       if (result.persisted) {
         setCompletionSaveState("saved");
@@ -285,6 +293,7 @@ export function useFragmentsPuzzleGame() {
       const { state, placed } = placeFragmentPiece(fragmentState, selectedPieceId, slotId);
       if (placed) {
         setFragmentState(state);
+        completionActionsRef.current.push({ kind: "fragment", pieceId: selectedPieceId, slotId });
         setPlacementFlash({ slotId, pieceId: selectedPieceId });
       }
     },
@@ -298,6 +307,7 @@ export function useFragmentsPuzzleGame() {
       const { state, moved } = moveTile(slidingState, tileId);
       if (moved) {
         setSlidingState(state);
+        completionActionsRef.current.push({ kind: "sliding", tileId });
       }
     },
     [phase, slidingState],

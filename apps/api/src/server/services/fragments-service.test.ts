@@ -47,6 +47,10 @@ vi.mock("@/lib/prisma", () => ({
   prisma: prismaMock,
 }));
 
+vi.mock("@/server/services/fragments-completion-verifier", () => ({
+  verifyFragmentsCompletion: vi.fn(() => ({ ok: true })),
+}));
+
 describe("fragments-service", () => {
   beforeEach(() => {
     for (const fn of [
@@ -94,6 +98,7 @@ describe("fragments-service", () => {
         moves: 10,
         seed: "seed-a",
         templateId: null,
+        actions: [{ kind: "fragment", pieceId: "e1", slotId: "slot-e1" }],
       },
     );
     expect(result.persisted).toBe(false);
@@ -121,6 +126,7 @@ describe("fragments-service", () => {
         moves: 88,
         seed: "seed-b",
         templateId: null,
+        actions: [{ kind: "sliding", tileId: 1 }],
       },
     );
 
@@ -172,6 +178,7 @@ describe("fragments-service", () => {
         moves: 9,
         seed: "seed-c",
         templateId: "wedge-4x5",
+        actions: [{ kind: "fragment", pieceId: "n1", slotId: "slot-n1" }],
       },
     );
 
@@ -208,6 +215,7 @@ describe("fragments-service", () => {
         moves: 4,
         seed: "seed-d",
         templateId: "t1",
+        actions: [{ kind: "fragment", pieceId: "e1", slotId: "slot-e1" }],
       },
     );
     expect(result.persisted).toBe(true);

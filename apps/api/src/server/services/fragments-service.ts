@@ -11,7 +11,15 @@ import {
   type RarestCandidate,
   type SetProgressRow,
 } from "@/server/services/fragments-profile-aggregate";
-import { getAllSets, getPlayablePrintingCountBySet } from "@/server/services/card-catalog-service";
+import {
+  getAllSets,
+  getCatalogCardById,
+  getPlayablePrintingCountBySet,
+} from "@/server/services/card-catalog-service";
+import {
+  verifyFragmentsCompletion,
+  type FragmentsCompletionAction,
+} from "@/server/services/fragments-completion-verifier";
 import { isValidProfileUserId } from "@/server/services/profile-service";
 
 export type FragmentsCompletionInput = {
@@ -27,6 +35,7 @@ export type FragmentsCompletionInput = {
   moves: number;
   seed: string;
   templateId: string | null;
+  actions: FragmentsCompletionAction[];
 };
 
 export type FragmentsSummary = {
@@ -156,9 +165,6 @@ function validatedInt(raw: unknown, field: string, min: number, max: number): nu
   return value;
 }
 
-/**
- * v1 note: the backend trusts client completion payloads (no server-side puzzle verification yet).
- */
 export function parseFragmentsCompletionInput(body: unknown): FragmentsCompletionInput {
   const b = (body ?? {}) as Record<string, unknown>;
   const puzzleModeRaw = normalizedText(b.puzzleMode, "puzzleMode", 20).toLowerCase();
@@ -169,6 +175,20 @@ export function parseFragmentsCompletionInput(body: unknown): FragmentsCompletio
   if (difficultyRaw !== "easy" && difficultyRaw !== "normal" && difficultyRaw !== "hard") {
     throw new FragmentsHttpError(400, "Invalid difficulty.");
   }
+  if (!Array.isArray(b.actions) || b.actions.length === 0 || b.actions.length > 100_000) {
+    throw new FragmentsHttpError(400, "Invalid completion proof.");
+  }
+  const actions = b.actions.map((raw) => {
+    if (typeof raw !== "object" || raw == null) throw new FragmentsHttpError(400, "Invalid completion proof.");
+    const action = raw as Record<string, unknown>;
+    if (action.kind === "fragment" && typeof action.pieceId === "string" && typeof action.slotId === "string") {
+      return { kind: "fragment" as const, pieceId: normalizedText(action.pieceId, "pieceId", 40), slotId: normalizedText(action.slotId, "slotId", 60) };
+    }
+    if (action.kind === "sliding" && typeof action.tileId === "number" && Number.isInteger(action.tileId)) {
+      return { kind: "sliding" as const, tileId: validatedInt(action.tileId, "tileId", 0, 1_000) };
+    }
+    throw new FragmentsHttpError(400, "Invalid completion proof.");
+  });
 
   return {
     runId: normalizedText(b.runId, "runId", 120),
@@ -183,6 +203,7 @@ export function parseFragmentsCompletionInput(body: unknown): FragmentsCompletio
     moves: validatedInt(b.moves, "moves", 0, 1_000_000),
     seed: normalizedText(b.seed, "seed", 300),
     templateId: normalizedNullableText(b.templateId, 120),
+    actions,
   };
 }
 
@@ -204,6 +225,11 @@ export async function recordFragmentsCompletion(
   const difficulty = toDifficulty(input.difficulty);
   const userId = actor.userId;
   const now = new Date();
+
+  const verification = verifyFragmentsCompletion(input, getCatalogCardById(input.cardId));
+  if (!verification.ok) {
+    throw new FragmentsHttpError(422, verification.reason);
+  }
 
   const applyCountBuckets = (stats: {
     fragmentsCount: number;

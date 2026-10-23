@@ -19,6 +19,10 @@ type FragmentsCompletionPayload = {
   moves: number;
   seed: string;
   templateId: string | null;
+  actions: Array<
+    | { kind: "fragment"; pieceId: string; slotId: string }
+    | { kind: "sliding"; tileId: number }
+  >;
 };
 
 function parseApiError(res: Response, body: string): Error {
