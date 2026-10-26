@@ -50,7 +50,7 @@ If catalog load fails at boot, gameplay routes should not be considered healthy.
 
 | Mount | File | Domain |
 |-------|------|--------|
-| `/health` | `http-app.ts` | Liveness |
+| `/health` | `http-app.ts` | Liveness |\n| `/ready` | `http-app.ts` | Readiness (catalog + PostgreSQL + lifecycle) |
 | `/me` | `me-routes.ts` | Current user |
 | `/profile` | `profile-routes.ts` | Codex / Guess public profiles |
 | `/leaderboard` | `leaderboard-routes.ts` | **Guess only** |
@@ -95,6 +95,17 @@ is monotonic per connection and represents delivered snapshots, not a shared dat
 overlapping snapshot reads are discarded before delivery. Polling remains authoritative when realtime
 delivery is delayed or unavailable. These defaults can be overridden with `COOP_WS_*` environment
 variables documented in `.env.example`.
+
+The API process marks itself ready after the HTTP server starts and the in-memory card catalog has
+initialized. `GET /api/health` remains a lightweight liveness response. `GET /api/ready` additionally
+checks that the catalog is usable and PostgreSQL answers a bounded lightweight query; it returns 200
+with `{ "ok": true, "ready": true }` only when all conditions hold, otherwise 503 with the same
+boolean shape. The database result is briefly cached and concurrent checks share one query.
+
+On SIGTERM or SIGINT, the process marks readiness false, rejects new application work, stops WebSocket
+upgrades, closes active WebSocket clients, drains HTTP connections, and disconnects Prisma. The drain
+deadline is controlled by `API_SHUTDOWN_TIMEOUT_MS` (default 10 seconds); after the deadline remaining
+HTTP connections are terminated and shutdown is reported as failed. Shutdown handling is idempotent.
 
 ## Testing
 
