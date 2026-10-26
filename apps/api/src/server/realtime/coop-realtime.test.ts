@@ -141,11 +141,25 @@ describe("co-op realtime snapshots", () => {
     const closed = waitForClose(ws);
     subscribe(ws);
 
-    await expect(waitForMessage(ws)).resolves.toMatchObject({ type: "error", code: "SUBSCRIBE_ERROR" });
+    await expect(waitForMessage(ws)).resolves.toMatchObject({ type: "error", code: "HTTP_403" });
     await expect(closed).resolves.toMatchObject({ code: 1008 });
     getCoopRoomPublic.mockClear();
     await realtime!.broadcastRoom("11111111-1111-4111-8111-111111111111");
     expect(getCoopRoomPublic).not.toHaveBeenCalled();
+  });
+
+  it("uses an internal-error close for subscription failures", async () => {
+    getCoopRoomPublic.mockRejectedValue(new Error("database unavailable"));
+    const port = await listen();
+    const ws = await connect(port);
+    const closed = waitForClose(ws);
+    subscribe(ws);
+
+    await expect(waitForMessage(ws)).resolves.toMatchObject({
+      type: "error",
+      code: "SUBSCRIBE_ERROR",
+    });
+    await expect(closed).resolves.toMatchObject({ code: 1011 });
   });
 
   it("rejects unsupported subscription protocol versions", async () => {

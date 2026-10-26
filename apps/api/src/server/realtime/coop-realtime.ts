@@ -257,13 +257,30 @@ export function createCoopRealtimeHub(options: CoopRealtimeOptions = {}): CoopRe
     try {
       await getCoopRoomPublic({ roomId, viewerGuestId: guestId });
     } catch (error) {
-      if (error instanceof CoopHttpError) {
-        sendError(ws, `HTTP_${error.status}`, error.message);
+      const status =
+        error instanceof CoopHttpError
+          ? error.status
+          : typeof error === "object" && error !== null && "status" in error &&
+              typeof error.status === "number"
+            ? error.status
+            : null;
+      if (status !== null) {
+        const message = error instanceof Error ? error.message : "Subscription denied.";
+        sendError(ws, `HTTP_${status}`, message);
+        closeSocket(
+          ws,
+          status === 401 || status === 403 || status === 404
+            ? CLOSE_POLICY_VIOLATION
+            : CLOSE_INTERNAL_ERROR,
+          status === 401 || status === 403 || status === 404
+            ? "Subscription denied."
+            : "Subscription failed.",
+        );
       } else {
         logRealtimeFailure("subscription authorization failed", error);
         sendError(ws, "SUBSCRIBE_ERROR", "Subscription unavailable.");
+        closeSocket(ws, CLOSE_INTERNAL_ERROR, "Subscription failed.");
       }
-      closeSocket(ws, CLOSE_POLICY_VIOLATION, "Subscription denied.");
       return;
     }
 
