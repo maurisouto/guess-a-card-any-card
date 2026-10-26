@@ -22,6 +22,8 @@ const tx = {
   },
 };
 
+const verifyFragmentsCompletion = vi.hoisted(() => vi.fn(() => ({ ok: true as const })));
+
 const prismaMock = {
   $transaction: vi.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)),
   $queryRaw: vi.fn(),
@@ -48,11 +50,13 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/server/services/fragments-completion-verifier", () => ({
-  verifyFragmentsCompletion: vi.fn(() => ({ ok: true })),
+  verifyFragmentsCompletion,
 }));
 
 describe("fragments-service", () => {
   beforeEach(() => {
+    verifyFragmentsCompletion.mockReset();
+    verifyFragmentsCompletion.mockReturnValue({ ok: true });
     for (const fn of [
       tx.fragmentsCompletion.findUnique,
       tx.fragmentsCompletion.create,
@@ -102,6 +106,37 @@ describe("fragments-service", () => {
       },
     );
     expect(result.persisted).toBe(false);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("does not persist a completion when the server rejects its proof", async () => {
+    const verifier = await import("@/server/services/fragments-completion-verifier");
+    vi.mocked(verifier.verifyFragmentsCompletion).mockReturnValue({
+      ok: false,
+      reason: "Fragment move proof is invalid.",
+    });
+
+    const { recordFragmentsCompletion } = await import("@/server/services/fragments-service");
+    await expect(
+      recordFragmentsCompletion(
+        { kind: "user", userId: "11111111-1111-4111-8111-111111111111" },
+        {
+          runId: "run-invalid-proof",
+          cardId: "card-1",
+          cardName: "Card",
+          cardImageUrl: "https://img",
+          fabSet: "Welcome to Rathe",
+          rarity: "Common",
+          puzzleMode: "fragments",
+          difficulty: "easy",
+          timeMs: 1000,
+          moves: 1,
+          seed: "seed-a",
+          templateId: "easy-3x4-v1",
+          actions: [{ kind: "fragment", pieceId: "e1", slotId: "slot-e1" }],
+        },
+      ),
+    ).rejects.toMatchObject({ status: 422 });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 

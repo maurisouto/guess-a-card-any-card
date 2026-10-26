@@ -23,6 +23,18 @@ describe("guest sessions", () => {
     expect(verifyGuestSession(tampered)).toBeNull();
   });
 
+  it("does not allow changing the guest identity without resigning the token", () => {
+    const issued = issueGuestSession("guest-1234567890");
+    const [, payload, signature] = issued.token.split(".");
+    const forgedPayload = Buffer.from(
+      JSON.stringify({ guestId: "guest-attacker-1234", issuedAt: 1, expiresAt: 4_102_444_800 }),
+      "utf8",
+    ).toString("base64url");
+
+    expect(verifyGuestSession(`g1.${forgedPayload}.${signature}`)).toBeNull();
+    expect(verifyGuestSession(`g1.${payload}.${signature}`)).toBe("guest-1234567890");
+  });
+
   it("keeps raw guest IDs only for non-production migration compatibility", () => {
     process.env.NODE_ENV = "production";
     expect(() => resolveGuestSessionValue("legacy-guest-id")).toThrow(/invalid|expired/i);
