@@ -14,3 +14,10 @@ export function createApiNodeServer(): ApiNodeServer {
   const realtime = attachCoopRealtime(server);
   return { server, realtime };
 }
+
+export function closeApiNodeServer(api: ApiNodeServer): Promise<void> {
+  api.realtime.close();
+  return new Promise((resolve, reject) => {
+    api.server.close((error) => (error ? reject(error) : resolve()));
+  });
+}

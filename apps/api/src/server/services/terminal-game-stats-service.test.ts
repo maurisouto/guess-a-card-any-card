@@ -16,18 +16,21 @@ vi.mock("@/server/repositories/stats-repository", async (importOriginal) => {
 describe("applyRegisteredUserStatsForTerminalGameInTx", () => {
   const gameUpdate = vi.fn();
   const gameFindUnique = vi.fn();
+  const queryRaw = vi.fn().mockResolvedValue([]);
 
   const tx = {
     game: {
       findUnique: gameFindUnique,
       update: gameUpdate,
     },
+    $queryRaw: queryRaw,
   };
 
   beforeEach(() => {
     applyGameOutcomeToUserStatsInTx.mockClear();
     mergeUserCardStatsAfterGameInTx.mockClear();
     gameUpdate.mockClear();
+    queryRaw.mockClear();
     gameFindUnique.mockReset();
   });
 

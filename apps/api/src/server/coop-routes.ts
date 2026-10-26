@@ -16,6 +16,15 @@ import {
 } from "@/server/services/coop-service";
 import { respondWithCatalogSets } from "@/server/respond-with-catalog-sets";
 import { resolveGuestSessionValue } from "@/server/auth/guest-session";
+import { getAllSets } from "@/server/services/card-catalog-service";
+import {
+  MultiplayerInputError,
+  parseDisplayName,
+  parseGuessInput,
+  parseMultiplayerJsonBody,
+  parseSelectedSets,
+  requireUuid,
+} from "@/server/multiplayer-input";
 
 function requireGuestHeader(c: { req: { header: (n: string) => string | undefined } }): string {
   try {
@@ -26,6 +35,9 @@ function requireGuestHeader(c: { req: { header: (n: string) => string | undefine
 }
 
 function handleCoopErr(c: Context, e: unknown) {
+  if (e instanceof MultiplayerInputError) {
+    return c.json({ error: e.message }, 400);
+  }
   if (e instanceof CoopHttpError) {
     return c.json({ error: e.message }, e.status as ContentfulStatusCode);
   }
@@ -37,10 +49,10 @@ export const coopRoutes = new Hono()
   .post("/rooms", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const body = (await c.req.json().catch(() => ({}))) as { displayName?: string };
+      const body = await parseMultiplayerJsonBody(c.req);
       const r = await createCoopRoom({
         hostGuestId: guestId,
-        displayName: typeof body.displayName === "string" ? body.displayName : "",
+        displayName: parseDisplayName(body),
       });
       return c.json(r, 201);
     } catch (e) {
@@ -50,12 +62,12 @@ export const coopRoutes = new Hono()
   .post("/rooms/:roomId/join", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
-      const body = (await c.req.json().catch(() => ({}))) as { displayName?: string };
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
+      const body = await parseMultiplayerJsonBody(c.req);
       await joinCoopRoom({
         roomId,
         guestId,
-        displayName: typeof body.displayName === "string" ? body.displayName : "",
+        displayName: parseDisplayName(body),
       });
       return c.json({ ok: true });
     } catch (e) {
@@ -65,7 +77,7 @@ export const coopRoutes = new Hono()
   .get("/rooms/:roomId", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
       const snap = await getCoopRoomPublic({ roomId, viewerGuestId: guestId });
       return c.json(snap);
     } catch (e) {
@@ -75,11 +87,9 @@ export const coopRoutes = new Hono()
   .patch("/rooms/:roomId/sets", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
-      const body = (await c.req.json().catch(() => ({}))) as { selectedSets?: string[] };
-      const selectedSets = Array.isArray(body.selectedSets)
-        ? body.selectedSets.filter((s): s is string => typeof s === "string")
-        : [];
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
+      const body = await parseMultiplayerJsonBody(c.req);
+      const selectedSets = parseSelectedSets(body, getAllSets());
       await updateCoopSelectedSets({ roomId, hostGuestId: guestId, selectedSets });
       return c.json({ ok: true });
     } catch (e) {
@@ -89,7 +99,7 @@ export const coopRoutes = new Hono()
   .post("/rooms/:roomId/start", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
       const out = await startCoopGame({ roomId, hostGuestId: guestId });
       return c.json(out);
     } catch (e) {
@@ -99,7 +109,7 @@ export const coopRoutes = new Hono()
   .post("/rooms/:roomId/leave", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
       await leaveCoopRoom({ roomId, guestId });
       return c.json({ ok: true });
     } catch (e) {
@@ -109,7 +119,7 @@ export const coopRoutes = new Hono()
   .post("/rooms/:roomId/end-game", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
       await hostEndCoopGame({ roomId, hostGuestId: guestId });
       return c.json({ ok: true });
     } catch (e) {
@@ -119,7 +129,7 @@ export const coopRoutes = new Hono()
   .post("/rooms/:roomId/dismiss-after-game", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
       await dismissCoopCircleByHostAfterGame({ roomId, hostGuestId: guestId });
       return c.json({ ok: true });
     } catch (e) {
@@ -129,11 +139,11 @@ export const coopRoutes = new Hono()
   .patch("/rooms/:roomId/players/:playerId/connection", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const roomId = c.req.param("roomId");
-      const targetRoomPlayerId = c.req.param("playerId");
-      const body = (await c.req.json().catch(() => ({}))) as { isConnected?: boolean };
+      const roomId = requireUuid(c.req.param("roomId"), "roomId");
+      const targetRoomPlayerId = requireUuid(c.req.param("playerId"), "playerId");
+      const body = await parseMultiplayerJsonBody(c.req);
       if (typeof body.isConnected !== "boolean") {
-        return c.json({ error: "Body must include boolean isConnected." }, 400);
+        throw new MultiplayerInputError("Body must include boolean isConnected.");
       }
       await setCoopPlayerConnected({
         roomId,
@@ -149,16 +159,9 @@ export const coopRoutes = new Hono()
   .post("/games/:gameId/guess", async (c) => {
     try {
       const guestId = requireGuestHeader(c);
-      const gameId = c.req.param("gameId");
-      const body = (await c.req.json().catch(() => ({}))) as {
-        guessText?: string;
-        timeTakenMs?: number;
-      };
-      const guessText = typeof body.guessText === "string" ? body.guessText : "";
-      const timeTakenMs =
-        typeof body.timeTakenMs === "number" && Number.isFinite(body.timeTakenMs)
-          ? Math.floor(body.timeTakenMs)
-          : 0;
+      const gameId = requireUuid(c.req.param("gameId"), "gameId");
+      const body = await parseMultiplayerJsonBody(c.req);
+      const { guessText, timeTakenMs } = parseGuessInput(body);
       const out = await submitCoopGuess({ gameId, submitterGuestId: guestId, guessText, timeTakenMs });
       return c.json(out);
     } catch (e) {

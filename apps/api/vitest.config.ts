@@ -7,6 +7,7 @@ export default defineConfig({
     name: "api",
     environment: "node",
     include: ["src/**/*.test.ts"],
+    exclude: ["src/integration/**"],
     env: {
       DATABASE_URL:
         process.env.DATABASE_URL ??

@@ -7,8 +7,13 @@ import { newRevealSeed, resolveGameCard, type GameForCardResolution } from "@/li
 import { nextActiveRoomPlayerId, shuffleRoomPlayerIds } from "@/server/engines/coop-engine";
 import type { CardTemplateKey, CardZoneValidityKind } from "@gac/shared/reveal";
 import { notifyCoopRoom } from "@/server/realtime/coop-notify";
-import { getRandomCard } from "@/server/services/card-catalog-service";
+import { getAllSets, getRandomCard } from "@/server/services/card-catalog-service";
 import { applyRegisteredUserStatsForTerminalGameInTx } from "@/server/services/terminal-game-stats-service";
+import {
+  validateDisplayName,
+  validateGuessInput,
+  validateSelectedSets,
+} from "@/server/multiplayer-input";
 
 export class CoopHttpError extends Error {
   constructor(
@@ -87,24 +92,27 @@ export async function createCoopRoom(params: {
   hostGuestId: string;
   displayName: string;
 }): Promise<{ roomId: string }> {
-  const room = await prisma.room.create({
-    data: {
-      hostGuestId: params.hostGuestId,
-      mode: "COOP",
-      state: "LOBBY",
-      selectedSets: [],
-    },
+  const roomId = await prisma.$transaction(async (tx) => {
+    const room = await tx.room.create({
+      data: {
+        hostGuestId: params.hostGuestId,
+        mode: "COOP",
+        state: "LOBBY",
+        selectedSets: [],
+      },
+    });
+    await tx.roomPlayer.create({
+      data: {
+        roomId: room.id,
+        guestId: params.hostGuestId,
+        displayName: validateDisplayName(params.displayName),
+        isHost: true,
+        isConnected: true,
+      },
+    });
+    return room.id;
   });
-  await prisma.roomPlayer.create({
-    data: {
-      roomId: room.id,
-      guestId: params.hostGuestId,
-      displayName: params.displayName.trim() || "Host",
-      isHost: true,
-      isConnected: true,
-    },
-  });
-  return { roomId: room.id };
+  return { roomId };
 }
 
 export async function joinCoopRoom(params: {
@@ -112,6 +120,7 @@ export async function joinCoopRoom(params: {
   guestId: string;
   displayName: string;
 }): Promise<void> {
+  const displayName = validateDisplayName(params.displayName);
   const room = await prisma.room.findUnique({ where: { id: params.roomId } });
   if (!room || room.mode !== "COOP") throw new CoopHttpError(404, "Circle not found.");
   if (room.state !== "LOBBY") {
@@ -134,7 +143,7 @@ export async function joinCoopRoom(params: {
       await tx.roomPlayer.update({
         where: { id: existing.id },
         data: {
-          displayName: params.displayName.trim() || existing.displayName,
+          displayName,
           isConnected: true,
         },
       });
@@ -145,7 +154,7 @@ export async function joinCoopRoom(params: {
       data: {
         roomId: params.roomId,
         guestId: params.guestId,
-        displayName: params.displayName.trim() || "Seer",
+        displayName,
         isHost: false,
         isConnected: true,
       },
@@ -159,6 +168,7 @@ export async function updateCoopSelectedSets(params: {
   hostGuestId: string;
   selectedSets: string[];
 }): Promise<void> {
+  const selectedSets = validateSelectedSets(params.selectedSets, getAllSets());
   await requireHost(params.roomId, params.hostGuestId);
   const room = await prisma.room.findUnique({ where: { id: params.roomId } });
   if (!room || room.state !== "LOBBY") {
@@ -166,7 +176,7 @@ export async function updateCoopSelectedSets(params: {
   }
   const updated = await prisma.room.updateMany({
     where: { id: params.roomId, mode: "COOP", state: RoomState.LOBBY },
-    data: { selectedSets: params.selectedSets },
+    data: { selectedSets },
   });
   if (updated.count !== 1) {
     throw new CoopHttpError(409, "Sets can only be chosen before the veil lifts.");
@@ -421,7 +431,8 @@ export async function submitCoopGuess(params: {
   guessText: string;
   timeTakenMs: number;
 }): Promise<{ correct: boolean; status: GameStatus }> {
-  const normalized = normalizeGuessText(params.guessText);
+  const { guessText, timeTakenMs } = validateGuessInput(params.guessText, params.timeTakenMs);
+  const normalized = normalizeGuessText(guessText);
   if (!normalized) throw new CoopHttpError(400, "Speak a name, not silence.");
 
   const txResult = await prisma.$transaction(async (tx): Promise<GuessTxResult> => {
@@ -483,10 +494,10 @@ export async function submitCoopGuess(params: {
         gameId: game.id,
         gamePlayerId: activeGp.id,
         stepNumber: stepNum,
-        guessText: params.guessText.trim(),
+        guessText,
         normalizedGuessText: normalized,
         isCorrect: correct,
-        timeTakenMs: Math.max(0, params.timeTakenMs),
+        timeTakenMs,
         submittedByHostOverride: hostOverride,
       },
     });
@@ -494,7 +505,7 @@ export async function submitCoopGuess(params: {
     if (correct) {
       const attemptCount = game.guesses.length + 1;
       const totalTimeMs =
-        game.guesses.reduce((s, g) => s + g.timeTakenMs, 0) + Math.max(0, params.timeTakenMs);
+        game.guesses.reduce((s, g) => s + g.timeTakenMs, 0) + timeTakenMs;
 
       await tx.game.update({
         where: { id: game.id },
