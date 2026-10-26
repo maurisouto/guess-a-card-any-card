@@ -4,10 +4,11 @@
 // Prompt 2 (BLUEPRINT_PRO.md §28.2): entities, enums, indexes, guest-friendly nullables.
 // See docs/BLUEPRINT_PRO.md §12–13. Align `User.id` with Supabase `auth.users.id` when OAuth is wired.
 //
-// Guest invariants (enforce in app today; optional DB CHECK later):
-// - RoomPlayer: exactly one of userId / guestId should be set for active rows.
-// - GamePlayer: same; links to RoomPlayer.roomPlayerId when coming from multiplayer.
-// - Room: hostUserId XOR hostGuestId for who created the room (nullable until wired).
+// Guest invariants are enforced by the H-03 raw SQL migration because Prisma schema syntax does not
+// represent PostgreSQL CHECK constraints. RoomPlayer historical inactive rows may have neither identity;
+// new active seats still require exactly one. GamePlayer snapshots retain the at-most-one DB invariant
+// because user deletion uses ON DELETE SET NULL; application creation requires exactly one.
+// Room hosts require exactly one of hostUserId / hostGuestId.
 
 generator client {
   provider = "prisma-client"

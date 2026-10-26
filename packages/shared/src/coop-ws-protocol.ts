@@ -22,6 +22,7 @@ export type ServerPongMessage = { type: "pong" };
 
 export type ServerStateMessage<TPayload = unknown> = {
   type: "state";
+  /** Monotonic state-delivery sequence for this connection; not a shared room revision. */
   seq: number;
   payload: TPayload;
 };

@@ -88,6 +88,14 @@ Next dev proxies `/api/*` → `http://127.0.0.1:8787` unless `API_PROXY_TARGET` 
 The API Node process also upgrades `/coop-ws`; co-op HTTP polling remains the fallback when WebSocket
 connection or delivery is unavailable. `npm run realtime:dev` is retained only for legacy standalone use.
 
+The hub sends protocol-level ping frames every 30 seconds and evicts clients that do not answer within
+90 seconds. Client messages are limited to 8 KiB, 20 messages per 10 seconds, and 4 subscription
+attempts per connection. A client whose outbound buffer exceeds 256 KiB is disconnected. State `seq`
+is monotonic per connection and represents delivered snapshots, not a shared database revision; older
+overlapping snapshot reads are discarded before delivery. Polling remains authoritative when realtime
+delivery is delayed or unavailable. These defaults can be overridden with `COOP_WS_*` environment
+variables documented in `.env.example`.
+
 ## Testing
 
 ```bash

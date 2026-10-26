@@ -19,6 +19,7 @@
     "start:api": "npm run start --workspace=@gac/api",
     "lint": "npm run lint --workspace=@gac/web",
     "test": "vitest run",
+    "test:integration": "npm run test:integration --workspace=@gac/api",
     "db:generate": "npm run db:generate --workspace=@gac/api",
     "db:migrate:dev": "npm run db:migrate:dev --workspace=@gac/api",
     "db:deploy": "npm run db:deploy --workspace=@gac/api",

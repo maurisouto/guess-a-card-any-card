@@ -19,25 +19,24 @@ export async function mergeUserCardStatsAfterGameInTx(
 ): Promise<void> {
   const { userId, cardId, won, attempts, durationMs } = args;
 
-  const existing = await tx.userCardStat.findUnique({
+  await tx.$executeRaw`
+    INSERT INTO user_card_stats (id, user_id, card_id, times_played, times_won, updated_at)
+    VALUES (gen_random_uuid(), ${userId}::uuid, ${cardId}, 0, 0, NOW())
+    ON CONFLICT (user_id, card_id) DO NOTHING
+  `;
+
+  await tx.$queryRaw`
+    SELECT id
+    FROM user_card_stats
+    WHERE user_id = ${userId}::uuid AND card_id = ${cardId}
+    FOR UPDATE
+  `;
+
+  const existing = await tx.userCardStat.findUniqueOrThrow({
     where: {
       userId_cardId: { userId, cardId },
     },
   });
-
-  if (!existing) {
-    await tx.userCardStat.create({
-      data: {
-        userId,
-        cardId,
-        timesPlayed: 1,
-        timesWon: won ? 1 : 0,
-        averageAttempts: won ? new Prisma.Decimal(attempts.toFixed(2)) : null,
-        averageTimeMs: won ? new Prisma.Decimal(durationMs.toFixed(0)) : null,
-      },
-    });
-    return;
-  }
 
   const timesPlayed = existing.timesPlayed + 1;
   const timesWon = existing.timesWon + (won ? 1 : 0);
@@ -82,11 +81,11 @@ export async function ensureUserStatRowInTx(
   tx: Prisma.TransactionClient,
   userId: string,
 ): Promise<void> {
-  await tx.userStat.upsert({
-    where: { userId },
-    create: { userId },
-    update: {},
-  });
+  await tx.$executeRaw`
+    INSERT INTO user_stats (user_id, games_played, games_won, games_lost, updated_at)
+    VALUES (${userId}::uuid, 0, 0, 0, NOW())
+    ON CONFLICT (user_id) DO NOTHING
+  `;
 }
 
 export async function ensureUserStatRow(userId: string): Promise<void> {
@@ -116,6 +115,13 @@ export async function applyGameOutcomeToUserStatsInTx(
   outcome: GameOutcomeForStats,
 ): Promise<void> {
   await ensureUserStatRowInTx(tx, outcome.userId);
+
+  await tx.$queryRaw`
+    SELECT user_id
+    FROM user_stats
+    WHERE user_id = ${outcome.userId}::uuid
+    FOR UPDATE
+  `;
 
   const current = await tx.userStat.findUniqueOrThrow({
     where: { userId: outcome.userId },

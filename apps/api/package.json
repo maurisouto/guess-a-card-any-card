@@ -10,6 +10,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
+    "test:integration": "tsx scripts/run-integration-tests.ts",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

@@ -15,8 +15,14 @@ import { resolveCatalogCardArtUrl } from "@/lib/card-art-url";
 import { revealProfileFromFabCard } from "@/lib/fab-reveal-profile";
 import { newRevealSeed, resolveGameCard, type GameForCardResolution } from "@/lib/game-card-resolution";
 import type { CardTemplateKey, CardZoneValidityKind } from "@gac/shared/reveal";
-import { getRandomCard } from "@/server/services/card-catalog-service";
+import { getAllSets, getRandomCard } from "@/server/services/card-catalog-service";
 import { applyRegisteredUserStatsForTerminalGameInTx } from "@/server/services/terminal-game-stats-service";
+import {
+  validateDisplayName,
+  validateGuessInput,
+  validateSelectedSets,
+  validateTimerPerStepSeconds,
+} from "@/server/multiplayer-input";
 
 export class CompetitiveHttpError extends Error {
   constructor(
@@ -288,25 +294,28 @@ export async function createCompetitiveRoom(params: {
   hostGuestId: string;
   displayName: string;
 }): Promise<{ roomId: string }> {
-  const room = await prisma.room.create({
-    data: {
-      hostGuestId: params.hostGuestId,
-      mode: "COMPETITIVE",
-      state: RoomState.LOBBY,
-      selectedSets: [],
-      timerPerStepSeconds: 90,
-    },
+  const roomId = await prisma.$transaction(async (tx) => {
+    const room = await tx.room.create({
+      data: {
+        hostGuestId: params.hostGuestId,
+        mode: "COMPETITIVE",
+        state: RoomState.LOBBY,
+        selectedSets: [],
+        timerPerStepSeconds: 90,
+      },
+    });
+    await tx.roomPlayer.create({
+      data: {
+        roomId: room.id,
+        guestId: params.hostGuestId,
+        displayName: validateDisplayName(params.displayName),
+        isHost: true,
+        isConnected: true,
+      },
+    });
+    return room.id;
   });
-  await prisma.roomPlayer.create({
-    data: {
-      roomId: room.id,
-      guestId: params.hostGuestId,
-      displayName: params.displayName.trim() || "Host",
-      isHost: true,
-      isConnected: true,
-    },
-  });
-  return { roomId: room.id };
+  return { roomId };
 }
 
 export async function joinCompetitiveRoom(params: {
@@ -314,6 +323,7 @@ export async function joinCompetitiveRoom(params: {
   guestId: string;
   displayName: string;
 }): Promise<void> {
+  const displayName = validateDisplayName(params.displayName);
   const room = await prisma.room.findUnique({ where: { id: params.roomId } });
   if (!room || room.mode !== "COMPETITIVE") {
     throw new CompetitiveHttpError(404, "Room not found.");
@@ -338,7 +348,7 @@ export async function joinCompetitiveRoom(params: {
       await tx.roomPlayer.update({
         where: { id: existing.id },
         data: {
-          displayName: params.displayName.trim() || existing.displayName,
+          displayName,
           isConnected: true,
         },
       });
@@ -349,7 +359,7 @@ export async function joinCompetitiveRoom(params: {
       data: {
         roomId: params.roomId,
         guestId: params.guestId,
-        displayName: params.displayName.trim() || "Rival",
+        displayName,
         isHost: false,
         isConnected: true,
       },
@@ -362,6 +372,7 @@ export async function updateCompetitiveSelectedSets(params: {
   hostGuestId: string;
   selectedSets: string[];
 }): Promise<void> {
+  const selectedSets = validateSelectedSets(params.selectedSets, getAllSets());
   await requireHost(params.roomId, params.hostGuestId);
   const room = await prisma.room.findUnique({ where: { id: params.roomId } });
   if (!room || room.state !== RoomState.LOBBY) {
@@ -369,7 +380,7 @@ export async function updateCompetitiveSelectedSets(params: {
   }
   const updated = await prisma.room.updateMany({
     where: { id: params.roomId, mode: GameMode.COMPETITIVE, state: RoomState.LOBBY },
-    data: { selectedSets: params.selectedSets },
+    data: { selectedSets },
   });
   if (updated.count !== 1) {
     throw new CompetitiveHttpError(409, "Sets can only be chosen in the lobby.");
@@ -381,12 +392,13 @@ export async function updateCompetitiveTimer(params: {
   hostGuestId: string;
   timerPerStepSeconds: number;
 }): Promise<void> {
+  const timerPerStepSeconds = validateTimerPerStepSeconds(params.timerPerStepSeconds);
   await requireHost(params.roomId, params.hostGuestId);
   const room = await prisma.room.findUnique({ where: { id: params.roomId } });
   if (!room || room.state !== RoomState.LOBBY) {
     throw new CompetitiveHttpError(409, "Timer can only be set in the lobby.");
   }
-  const t = Math.floor(params.timerPerStepSeconds);
+  const t = timerPerStepSeconds;
   if (t < 15 || t > 600) {
     throw new CompetitiveHttpError(400, "Timer must be between 15 and 600 seconds.");
   }
@@ -682,7 +694,8 @@ export async function submitCompetitiveGuess(params: {
   guessText: string;
   timeTakenMs: number;
 }): Promise<{ ok: true }> {
-  const normalized = normalizeGuessText(params.guessText);
+  const { guessText, timeTakenMs } = validateGuessInput(params.guessText, params.timeTakenMs);
+  const normalized = normalizeGuessText(guessText);
   if (!normalized) {
     throw new CompetitiveHttpError(400, "Speak a name, not silence.");
   }
@@ -733,10 +746,10 @@ export async function submitCompetitiveGuess(params: {
         gameId: game.id,
         gamePlayerId: gp.id,
         stepNumber: stepNum,
-        guessText: params.guessText.trim(),
+        guessText,
         normalizedGuessText: normalized,
         isCorrect,
-        timeTakenMs: Math.max(0, params.timeTakenMs),
+        timeTakenMs,
         submittedByHostOverride: false,
       },
     });
