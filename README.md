@@ -32,6 +32,17 @@ cp .env.example .env    # DATABASE_URL; Supabase si usás auth — ver comentari
 npm run db:deploy       # migraciones (workspace @gac/api)
 ```
 
+### Sign in local
+
+El botón **Sign in** del hub solo se habilita cuando el frontend tiene configuradas
+`NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` en el `.env` raíz o en
+`apps/web/.env.local`. Usá la URL del proyecto y la **anon key** pública de
+Supabase Dashboard → Project Settings → API; nunca uses una service-role key en el navegador.
+
+Después de cambiar estas variables, reiniciá `npm run dev`. Para OAuth o magic links,
+agregá `http://localhost:3000/auth/callback` en Supabase Dashboard → Authentication →
+URL Configuration y habilitá los providers correspondientes.
+
 **Solo front** (sin API, no hay datos reales):
 
 ```bash
