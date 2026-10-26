@@ -117,6 +117,17 @@ function logRealtimeFailure(event: string, error?: unknown): void {
   console.warn(`[gac-api] coop websocket ${event}${detail ? `: ${detail}` : ""}`);
 }
 
+function declaredSubscribeProtocol(raw: string): unknown {
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+    const message = value as { type?: unknown; protocol?: unknown };
+    return message.type === "subscribe" ? message.protocol : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function createCoopRealtimeHub(options: CoopRealtimeOptions = {}): CoopRealtimeHub {
   const resolved = resolveOptions(options);
   const wss = new WebSocketServer({ noServer: true, maxPayload: resolved.maxMessageBytes });
@@ -243,9 +254,8 @@ export function createCoopRealtimeHub(options: CoopRealtimeOptions = {}): CoopRe
     const meta = socketMeta.get(ws);
     if (!meta || meta.cleaned || shuttingDown) return;
 
-    let payload: Awaited<ReturnType<typeof getCoopRoomPublic>>;
     try {
-      payload = await getCoopRoomPublic({ roomId, viewerGuestId: guestId });
+      await getCoopRoomPublic({ roomId, viewerGuestId: guestId });
     } catch (error) {
       if (error instanceof CoopHttpError) {
         sendError(ws, `HTTP_${error.status}`, error.message);
@@ -264,10 +274,7 @@ export function createCoopRealtimeHub(options: CoopRealtimeOptions = {}): CoopRe
       meta.subscriptionCount !== subscriptionAttempt
     ) return;
     addSocket(ws, roomId, guestId);
-    const current = socketMeta.get(ws);
-    if (!current) return;
-    current.seq = 1;
-    sendJson(ws, { type: "state", seq: current.seq, payload });
+    await pushSnapshot(ws);
   }
 
   const heartbeat = setInterval(() => {
@@ -344,6 +351,13 @@ export function createCoopRealtimeHub(options: CoopRealtimeOptions = {}): CoopRe
         return;
       }
 
+      const declaredProtocol = declaredSubscribeProtocol(raw);
+      if (declaredProtocol !== undefined && declaredProtocol !== COOP_WS_PROTOCOL_VERSION) {
+        sendError(ws, "PROTOCOL", `Expected protocol ${COOP_WS_PROTOCOL_VERSION}.`);
+        closeSocket(ws, CLOSE_POLICY_VIOLATION, "Unsupported protocol version.");
+        return;
+      }
+
       const parsed = parseClientToServerMessage(raw);
       if (!parsed) {
         sendError(ws, "BAD_MESSAGE", "Unrecognized or invalid envelope.");
@@ -353,6 +367,12 @@ export function createCoopRealtimeHub(options: CoopRealtimeOptions = {}): CoopRe
 
       if (parsed.type === "ping") {
         sendJson(ws, { type: "pong" });
+        return;
+      }
+
+      if (parsed.protocol !== COOP_WS_PROTOCOL_VERSION) {
+        sendError(ws, "PROTOCOL", `Expected protocol ${COOP_WS_PROTOCOL_VERSION}.`);
+        closeSocket(ws, CLOSE_POLICY_VIOLATION, "Unsupported protocol version.");
         return;
       }
 

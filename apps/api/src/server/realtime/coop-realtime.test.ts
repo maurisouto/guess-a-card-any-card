@@ -128,7 +128,7 @@ describe("co-op realtime snapshots", () => {
       { type: "state", seq: 1, payload: snapshot },
       { type: "state", seq: 2, payload: snapshot },
     ]);
-    expect(getCoopRoomPublic).toHaveBeenCalledTimes(2);
+    expect(getCoopRoomPublic).toHaveBeenCalledTimes(3);
     ws.close();
   });
 
@@ -145,6 +145,26 @@ describe("co-op realtime snapshots", () => {
     await expect(closed).resolves.toMatchObject({ code: 1008 });
     getCoopRoomPublic.mockClear();
     await realtime!.broadcastRoom("11111111-1111-4111-8111-111111111111");
+    expect(getCoopRoomPublic).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported subscription protocol versions", async () => {
+    getCoopRoomPublic.mockResolvedValue({ id: "room" });
+    const port = await listen();
+    const ws = await connect(port);
+    const closed = waitForClose(ws);
+    ws.send(JSON.stringify({
+      type: "subscribe",
+      roomId: "11111111-1111-4111-8111-111111111111",
+      guestId: "guest-1234567890",
+      protocol: 999,
+    }));
+
+    await expect(waitForMessage(ws)).resolves.toMatchObject({
+      type: "error",
+      code: "PROTOCOL",
+    });
+    await expect(closed).resolves.toMatchObject({ code: 1008 });
     expect(getCoopRoomPublic).not.toHaveBeenCalled();
   });
 
@@ -223,6 +243,7 @@ describe("co-op realtime snapshots", () => {
     const secondRead = defer<Record<string, unknown>>();
     getCoopRoomPublic
       .mockResolvedValueOnce({ id: "initial" })
+      .mockResolvedValueOnce({ id: "initial" })
       .mockImplementationOnce(() => firstRead.promise)
       .mockImplementationOnce(() => secondRead.promise);
     const port = await listen();
@@ -240,6 +261,42 @@ describe("co-op realtime snapshots", () => {
     await expect(waitForMessage(ws)).resolves.toMatchObject({
       type: "state",
       seq: 2,
+      payload: { id: "new" },
+    });
+    ws.close();
+  });
+
+  it("reconciles a room mutation that races with initial subscription", async () => {
+    const authorization = defer<Record<string, unknown>>();
+    const initialSnapshot = defer<Record<string, unknown>>();
+    const currentSnapshot = defer<Record<string, unknown>>();
+    getCoopRoomPublic
+      .mockImplementationOnce(() => authorization.promise)
+      .mockImplementationOnce(() => initialSnapshot.promise)
+      .mockImplementationOnce(() => currentSnapshot.promise);
+
+    const port = await listen();
+    const ws = await connect(port);
+    ws.send(JSON.stringify({
+      type: "subscribe",
+      roomId: "11111111-1111-4111-8111-111111111111",
+      guestId: "guest-1234567890",
+      protocol: 1,
+    }));
+
+    authorization.resolve({ id: "authorized" });
+    await waitForMockCalls(2);
+
+    const update = waitForMessage(ws);
+    const broadcast = realtime!.broadcastRoom("11111111-1111-4111-8111-111111111111");
+    currentSnapshot.resolve({ id: "new" });
+    await new Promise((resolve) => setImmediate(resolve));
+    initialSnapshot.resolve({ id: "old" });
+    await broadcast;
+
+    await expect(update).resolves.toMatchObject({
+      type: "state",
+      seq: 1,
       payload: { id: "new" },
     });
     ws.close();
@@ -324,4 +381,12 @@ function defer<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
     resolve = res;
   });
   return { promise, resolve };
+}
+
+async function waitForMockCalls(expected: number): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (getCoopRoomPublic.mock.calls.length >= expected) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  throw new Error(`Expected ${expected} snapshot calls, got ${getCoopRoomPublic.mock.calls.length}.`);
 }
