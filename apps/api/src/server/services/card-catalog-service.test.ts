@@ -45,7 +45,7 @@ describe("card-catalog-service", () => {
     initCardCatalog();
   });
 
-  it("filters out tokens, marvel, promo, cold/gold foil, back images, and missing art", () => {
+  it("filters excluded cards and keeps cold/gold foil when they are the only playable printing", () => {
     const source: Card[] = [
       fab({
         name: "Playable",
@@ -146,8 +146,13 @@ describe("card-catalog-service", () => {
     ];
 
     const { allCards } = buildCatalogFromFaBCards(source);
-    expect(allCards).toHaveLength(1);
-    expect(allCards[0]!.name).toBe("Playable");
+    expect(allCards).toHaveLength(3);
+    expect(allCards.map((card) => card.name)).toEqual(["Cold", "Gold", "Playable"]);
+    expect(allCards.map((card) => card.id)).toEqual([
+      "cold-x::0::C1",
+      "gold-x::0::G1",
+      "playable-red::0::P1",
+    ]);
   });
 
   it("derives sorted set keys from playable printings", () => {
@@ -226,6 +231,32 @@ describe("card-catalog-service", () => {
     const pick = getRandomCard([String(Release.Dynasty)], []);
     expect(pick?.setKey).toBe(String(Release.Dynasty));
     expect(pick?.name).toBe("D");
+  });
+
+  it("getRandomCard: same seed yields the same card (sorted pool)", () => {
+    const source: Card[] = [
+      fab({
+        name: "A",
+        cardIdentifier: "a-red",
+        printings: [printing({ identifier: "1", set: Release.Monarch, image: "a" })],
+      }),
+      fab({
+        name: "B",
+        cardIdentifier: "b-red",
+        printings: [printing({ identifier: "2", set: Release.Monarch, image: "b" })],
+      }),
+      fab({
+        name: "C",
+        cardIdentifier: "c-red",
+        printings: [printing({ identifier: "3", set: Release.Monarch, image: "c" })],
+      }),
+    ];
+    __applyCatalogForTests(buildCatalogFromFaBCards(source));
+
+    const first = getRandomCard([], [], "phase-four-seed");
+    const second = getRandomCard([], [], "phase-four-seed");
+    expect(first?.id).toBe(second?.id);
+    expect(first).not.toBeNull();
   });
 
   it("getRandomCard: when every card is excluded, falls back to unfiltered pool", () => {

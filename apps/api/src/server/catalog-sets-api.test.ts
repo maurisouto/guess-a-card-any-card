@@ -14,7 +14,12 @@ describe("Lobby GET /sets uses in-memory card catalog", () => {
     initCardCatalog();
   });
 
-  const paths = ["/api/single/sets", "/api/coop/sets", "/api/competitive/sets"] as const;
+  const paths = [
+    "/api/catalog/sets",
+    "/api/single/sets",
+    "/api/coop/sets",
+    "/api/competitive/sets",
+  ] as const;
 
   for (const path of paths) {
     it(`${path} returns { sets } matching getAllSets() (not puzzles DB)`, async () => {
@@ -34,5 +39,13 @@ describe("Lobby GET /sets uses in-memory card catalog", () => {
     expect(res.status).toBe(503);
     const j = (await res.json()) as { error?: string };
     expect(j.error).toMatch(/catalog/i);
+  });
+
+  it("GET /api/catalog/sets returns 503 when catalog is unavailable", async () => {
+    __clearCatalogForTests();
+    const res = await app.request("http://localhost/api/catalog/sets");
+    expect(res.status).toBe(503);
+    const j = (await res.json()) as { error?: string };
+    expect(j.error).toMatch(/catalog|unavailable/i);
   });
 });

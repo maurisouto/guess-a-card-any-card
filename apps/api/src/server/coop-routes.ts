@@ -15,11 +15,14 @@ import {
   updateCoopSelectedSets,
 } from "@/server/services/coop-service";
 import { respondWithCatalogSets } from "@/server/respond-with-catalog-sets";
+import { resolveGuestSessionValue } from "@/server/auth/guest-session";
 
 function requireGuestHeader(c: { req: { header: (n: string) => string | undefined } }): string {
-  const gid = c.req.header("x-guest-id")?.trim();
-  if (!gid) throw new CoopHttpError(400, "Missing X-Guest-Id header.");
-  return gid;
+  try {
+    return resolveGuestSessionValue(c.req.header("x-guest-id"));
+  } catch (e) {
+    throw new CoopHttpError(401, e instanceof Error ? e.message : "Invalid guest session.");
+  }
 }
 
 function handleCoopErr(c: Context, e: unknown) {

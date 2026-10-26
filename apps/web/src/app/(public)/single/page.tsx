@@ -7,6 +7,7 @@ export default function SinglePlayerPage() {
       title="Solitary reading"
       description="Bind the omen to chosen sigils if you wish—each veil allows but one naming. Divine the card before your allotted attempts are spent."
       className="max-w-5xl"
+      showReturnToHub
     >
       <SinglePlayerClient />
     </RouteShell>

@@ -13,7 +13,7 @@ export default function StatsPage() {
         description="This page will grow with deeper history, trends, and tales from your runs. For now, your lifetime tallies and recent games live on your profile — keep playing to give the archive something to remember."
       >
         <Link
-          href="/profile"
+          href="/guess/profile"
           className="rounded-md border border-[var(--gold-dim)]/35 px-3 py-1.5 text-xs font-medium text-[var(--gold-bright)] transition-colors hover:border-[var(--gold)]/55 hover:text-[var(--parchment)]"
         >
           Open profile

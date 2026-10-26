@@ -62,16 +62,20 @@ describe("resolveActorFromRequest", () => {
     expect(actor).toEqual({ kind: "user", userId: USER_ID });
   });
 
-  it("invalid JWT + guest header → GuestActor", async () => {
+  it("invalid JWT + guest header → RequestIdentityError", async () => {
     const verifyAccessToken = vi.fn().mockResolvedValue(null);
-    const actor = await resolveActorFromRequest(
-      headers({
-        "x-guest-id": "fallback-guest",
-        authorization: "Bearer bad",
-      }),
-      { verifyAccessToken },
-    );
-    expect(actor).toEqual({ kind: "guest", guestId: "fallback-guest" });
+    await expect(
+      resolveActorFromRequest(
+        headers({
+          "x-guest-id": "fallback-guest",
+          authorization: "Bearer bad",
+        }),
+        { verifyAccessToken },
+      ),
+    ).rejects.toMatchObject({
+      name: "RequestIdentityError",
+      status: 401,
+    });
   });
 
   it("missing both → RequestIdentityError", async () => {

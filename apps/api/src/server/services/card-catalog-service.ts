@@ -231,6 +231,16 @@ export function getAllSets(): string[] {
   );
 }
 
+/** Playable catalog printing count per release/set key (same pool as random deal). */
+export function getPlayablePrintingCountBySet(): Map<string, number> {
+  const m = new Map<string, number>();
+  if (!catalogReady) return m;
+  for (const [setKey, rows] of cardsBySet.entries()) {
+    m.set(setKey, rows.length);
+  }
+  return m;
+}
+
 /** Resolve a playable catalog printing by stable {@link CatalogCard.id}, or null. */
 export function getCatalogCardById(id: string): CatalogCard | null {
   if (!catalogReady) return null;
@@ -285,13 +295,37 @@ export function getCardsBySets(selectedSets?: readonly string[]): CatalogCard[] 
   return out;
 }
 
+/** Deterministic index in `[0, len)` from a string seed (FNV-1a style). */
+export function stablePickIndexFromSeed(seed: string, len: number): number {
+  if (len <= 0) return 0;
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) % len;
+}
+
+function pickFromPool(pool: CatalogCard[], seed?: string): CatalogCard | null {
+  if (pool.length === 0) return null;
+  if (seed != null && seed.length > 0) {
+    const sorted = [...pool].sort((a, b) => a.id.localeCompare(b.id, undefined, { sensitivity: "base" }));
+    const idx = stablePickIndexFromSeed(seed, sorted.length);
+    return sorted[idx]!;
+  }
+  return pool[Math.floor(Math.random() * pool.length)]!;
+}
+
 /**
  * Uniform random playable printing, optionally restricted to sets and excluding catalog ids.
  * If the pool is empty only because of exclusions, falls back to unexcluded pool.
+ *
+ * When `seed` is set, the choice is deterministic for the same pool + seed (pool sorted by id first).
  */
 export function getRandomCard(
   selectedSets: readonly string[],
   excludeCardIds?: ReadonlySet<string> | readonly string[],
+  seed?: string,
 ): CatalogCard | null {
   const exclude =
     excludeCardIds == null
@@ -301,16 +335,16 @@ export function getRandomCard(
         : new Set(excludeCardIds);
 
   const basePool = getCardsBySets(selectedSets);
-  const tryPool = (pool: CatalogCard[]) => {
+  const tryPool = (pool: CatalogCard[]): CatalogCard | null => {
     if (pool.length === 0) return null;
     if (exclude.size === 0) {
-      return pool[Math.floor(Math.random() * pool.length)]!;
+      return pickFromPool(pool, seed);
     }
     const filtered = pool.filter((c) => !exclude.has(c.id));
     if (filtered.length > 0) {
-      return filtered[Math.floor(Math.random() * filtered.length)]!;
+      return pickFromPool(filtered, seed);
     }
-    return pool[Math.floor(Math.random() * pool.length)]!;
+    return pickFromPool(pool, seed);
   };
 
   return tryPool(basePool);

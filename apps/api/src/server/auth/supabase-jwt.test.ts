@@ -35,7 +35,11 @@ describe("verifySupabaseAccessToken (local JWKS)", () => {
       audience: "authenticated",
     });
 
-    expect(out).toEqual({ sub: SUB, email: "u@example.com" });
+    expect(out).toEqual({
+      sub: SUB,
+      email: "u@example.com",
+      avatarUrl: null,
+    });
   });
 
   it("returns null for wrong issuer", async () => {

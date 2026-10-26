@@ -8,6 +8,7 @@ import {
   getFirstCatalogCardIdByExactName,
   searchPlayableCatalogCardNames,
 } from "@/server/services/card-catalog-service";
+import { resolveRandomPlayableCatalogCard } from "@/server/services/random-playable-catalog-card";
 import {
   forfeitSinglePlayerGame,
   SinglePlayerHttpError,
@@ -27,7 +28,49 @@ function handleErr(c: Context, e: unknown) {
 }
 
 export const singlePlayerRoutes = new Hono()
+  /**
+   * @deprecated Use `GET /api/catalog/sets` instead. This path remains as a compatibility alias.
+   */
   .get("/sets", (c) => respondWithCatalogSets(c))
+  /**
+   * @deprecated Prefer `GET /api/catalog/random-card` (neutral catalog). This path remains as a
+   * compatibility alias mapping to the same resolver; legacy JSON uses `cardId` / `cardName` / `fabSet`.
+   */
+  .get("/puzzles/random-card", (c) => {
+    try {
+      const setNames = c.req.queries("sets") ?? [];
+      const selectedFabSets = setNames.map((s) => s.trim()).filter((s) => s.length > 0);
+      const excludeQs = c.req.queries("exclude") ?? [];
+      const exclude = excludeQs.map((s) => s.trim()).filter((s) => s.length > 0);
+      const seed = c.req.query("seed")?.trim() ?? undefined;
+
+      const result = resolveRandomPlayableCatalogCard({
+        selectedSets: selectedFabSets,
+        excludeIds: exclude,
+        seed,
+      });
+      if (!result.ok) {
+        const { body, httpStatus } = result.err;
+        if (httpStatus === 422 && "id" in body) {
+          return c.json(
+            { error: body.error, code: body.code, cardId: body.id },
+            httpStatus,
+          );
+        }
+        return c.json(body, httpStatus);
+      }
+      const { card } = result;
+      return c.json({
+        cardId: card.id,
+        cardName: card.name,
+        imageUrl: card.imageUrl,
+        fabSet: card.set,
+        rarity: card.rarity,
+      });
+    } catch (e) {
+      return handleErr(c, e);
+    }
+  })
   .get("/cards/search", async (c) => {
     try {
       const q = c.req.query("q")?.trim() ?? "";

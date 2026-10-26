@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
+export type SetMultiSelectTone = "guess" | "fragments";
+
 export type SetMultiSelectProps = {
   options: string[];
   value: Set<string>;
@@ -14,6 +16,9 @@ export type SetMultiSelectProps = {
   loadingLabel?: string;
   /** Empty state when no sets from API */
   emptyLabel?: string;
+  /** Summary when `value` is empty (e.g. “all sets” vs “choose sets”). */
+  allSetsSummary?: string;
+  tone?: SetMultiSelectTone;
   className?: string;
 };
 
@@ -28,6 +33,8 @@ export function SetMultiSelect({
   loading = false,
   loadingLabel = "Gathering set sigils from the archive…",
   emptyLabel = "No sets loaded from the card catalog yet.",
+  allSetsSummary = "Choose one or more sets (FaB)…",
+  tone = "guess",
   className,
 }: SetMultiSelectProps) {
   const [open, setOpen] = useState(false);
@@ -52,7 +59,7 @@ export function SetMultiSelect({
 
   const summary =
     value.size === 0
-      ? "Choose one or more sets (FaB)…"
+      ? allSetsSummary
       : value.size === 1
         ? [...value][0]
         : `${value.size} sets selected`;
@@ -65,6 +72,18 @@ export function SetMultiSelect({
 
   const canOpen = !loading && !disabled && options.length > 0;
 
+  const triggerClass =
+    tone === "fragments"
+      ? "h-auto min-h-12 w-full justify-between border-[#2f7f5f]/45 bg-[#0b1210]/55 px-4 py-3 text-left font-normal text-[#bde9cf] hover:border-[#4ade80]/38 hover:bg-[#0f1f1a]/55"
+      : "h-auto min-h-12 w-full justify-between border-[var(--wine-deep)] px-4 py-3 text-left font-normal text-[var(--parchment)]";
+
+  const chevronClass = tone === "fragments" ? "text-[#7aab92]" : "text-[var(--gold-dim)]";
+
+  const listClass =
+    tone === "fragments"
+      ? "absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[#3d8f6a]/35 bg-[#0b1210]/96 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-sm"
+      : "absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[var(--gold)]/25 bg-[var(--plum)]/95 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-sm";
+
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       <Button
@@ -75,28 +94,24 @@ export function SetMultiSelect({
         aria-busy={loading}
         aria-haspopup="listbox"
         aria-controls={listId}
-        className="h-auto min-h-12 w-full justify-between border-[var(--wine-deep)] px-4 py-3 text-left font-normal text-[var(--parchment)]"
+        className={triggerClass}
         onClick={() => canOpen && setOpen((o) => !o)}
       >
         <span
           className={cn(
             "line-clamp-2 text-sm",
-            loading && "animate-pulse text-[var(--gold-dim)]",
+            loading && tone === "guess" && "animate-pulse text-[var(--gold-dim)]",
+            loading && tone === "fragments" && "animate-pulse text-[#7aab92]",
           )}
         >
           {labelText}
         </span>
-        <span className="ml-2 shrink-0 text-[var(--gold-dim)]" aria-hidden>
+        <span className={cn("ml-2 shrink-0", chevronClass)} aria-hidden>
           {loading ? "…" : open ? "\u25B2" : "\u25BC"}
         </span>
       </Button>
       {open && canOpen ? (
-        <div
-          id={listId}
-          role="listbox"
-          aria-multiselectable="true"
-          className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[var(--gold)]/25 bg-[var(--plum)]/95 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-sm"
-        >
+        <div id={listId} role="listbox" aria-multiselectable="true" className={listClass}>
           {options.map((name) => {
             const checked = value.has(name);
             return (
@@ -106,16 +121,25 @@ export function SetMultiSelect({
                 aria-selected={checked}
                 className={cn(
                   "flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm transition-colors",
-                  checked
-                    ? "bg-[var(--gold)]/12 text-[var(--gold-bright)]"
-                    : "text-[var(--parchment-dim)] hover:bg-[var(--void)]/60",
+                  tone === "fragments"
+                    ? checked
+                      ? "bg-[#2f7f5f]/28 text-[#ddfeea]"
+                      : "text-[#9fc8b6] hover:bg-[#0f1f1a]/75"
+                    : checked
+                      ? "bg-[var(--gold)]/12 text-[var(--gold-bright)]"
+                      : "text-[var(--parchment-dim)] hover:bg-[var(--void)]/60",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleOption(name)}
-                  className="h-4 w-4 rounded border-[var(--gold-dim)] bg-[var(--void)] text-[var(--gold)]"
+                  className={cn(
+                    "h-4 w-4 rounded",
+                    tone === "fragments"
+                      ? "border-[#3d8f6a]/55 bg-[#0b1210] text-[#4ade80]"
+                      : "border-[var(--gold-dim)] bg-[var(--void)] text-[var(--gold)]",
+                  )}
                 />
                 <span className="min-w-0 flex-1">{name}</span>
               </label>

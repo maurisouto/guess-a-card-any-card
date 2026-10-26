@@ -1,4 +1,4 @@
-import { getOrCreateGuestId } from "@/lib/coop/guest-id";
+import { getOrCreateGuestToken } from "@/lib/coop/guest-id";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
@@ -60,7 +60,7 @@ export async function buildGameApiRequestHeaders(
   base?: HeadersInit,
 ): Promise<Headers> {
   const headers = new Headers(base);
-  const guestId = getOrCreateGuestId();
+  const guestId = await getOrCreateGuestToken();
   const accessToken = await getSupabaseAccessTokenForApi();
   mergeActorAuthHeaders(headers, guestId, accessToken);
   return headers;

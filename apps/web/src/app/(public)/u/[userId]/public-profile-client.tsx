@@ -6,10 +6,21 @@ import type { PublicProfileResponse } from "@/lib/profile/types";
 import { ProfileView } from "@/components/profile/profile-view";
 import { RouteShell } from "@/components/layout/route-shell";
 import Link from "next/link";
+import type { Brand } from "@/lib/experience-brand";
 
 type Props = { userId: string };
+type ProfileScope = "global" | "guess";
 
-export function PublicProfileClient({ userId }: Props) {
+type PublicProfileClientProps = Props & {
+  brand?: Brand;
+  scope?: ProfileScope;
+};
+
+export function PublicProfileClient({
+  userId,
+  brand = "guess",
+  scope = "global",
+}: PublicProfileClientProps) {
   const [data, setData] = useState<PublicProfileResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +43,14 @@ export function PublicProfileClient({ userId }: Props) {
 
   if (loading) {
     return (
-      <RouteShell title="Player" description="Public stats and history.">
+      <RouteShell
+        title={scope === "global" ? "Codex Player" : "Guess Player"}
+        description={
+          scope === "global"
+            ? "Public overview across experiences."
+            : "Public Guess stats and challenge history."
+        }
+      >
         <p className="text-sm text-[var(--mist)]">Loading…</p>
       </RouteShell>
     );
@@ -63,9 +81,13 @@ export function PublicProfileClient({ userId }: Props) {
   return (
     <RouteShell
       title={data.displayName}
-      description="Public stats from completed readings (single, challenge, and more as modes grow)."
+      description={
+        scope === "global"
+          ? "Public Codex profile across completed experiences."
+          : "Public Guess profile from completed readings."
+      }
     >
-      <ProfileView data={data} isOwnProfile={false} />
+      <ProfileView data={data} isOwnProfile={false} brand={brand} scope={scope} />
     </RouteShell>
   );
 }

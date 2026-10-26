@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-context";
+import type { Brand } from "@/lib/experience-brand";
 import { cn } from "@/lib/utils/cn";
 
 type LoginPanelProps = {
   variant: "page" | "modal";
+  brand?: Brand;
   className?: string;
 };
 
-export function LoginPanel({ variant, className }: LoginPanelProps) {
+export function LoginPanel({ variant, brand = "guess", className }: LoginPanelProps) {
   const {
     isConfigured,
     isLoading,
@@ -55,13 +57,45 @@ export function LoginPanel({ variant, className }: LoginPanelProps) {
   }
 
   const busyLabel = magicBusy ? "Sending…" : "Send magic link";
+  const isCodex = brand === "codex";
+  const isFragments = brand === "fragments";
+  const oauthButtonClass = isCodex
+    ? "rounded-md border border-[#60A5FA]/35 bg-[linear-gradient(180deg,rgba(18,24,38,0.92),rgba(11,13,18,0.96))] px-4 py-2.5 text-sm font-semibold text-[#DCE8FF] transition-[border-color,box-shadow,background-color] hover:border-[#60A5FA]/65 hover:bg-[linear-gradient(180deg,rgba(26,36,56,0.95),rgba(14,20,34,0.98))] hover:shadow-[0_0_20px_rgba(59,130,246,0.22)]"
+    : isFragments
+      ? "rounded-md border border-[#4ADE80]/35 bg-[linear-gradient(180deg,rgba(15,31,26,0.94),rgba(11,18,16,0.98))] px-4 py-2.5 text-sm font-semibold text-[#DDFEEA] transition-[border-color,box-shadow,background-color] hover:border-[#86EFAC]/65 hover:bg-[linear-gradient(180deg,rgba(23,46,38,0.95),rgba(13,25,21,0.98))] hover:shadow-[0_0_20px_rgba(74,222,128,0.2)]"
+    : "rounded-md border border-[var(--gold)]/50 bg-[var(--plum-mid)]/90 px-4 py-2.5 text-sm font-semibold text-[var(--parchment)] transition-colors hover:border-[var(--gold-bright)]/70 hover:bg-[var(--wine)]/50";
+  const sectionBorderClass = isCodex
+    ? "border-[#60A5FA]/20"
+    : isFragments
+      ? "border-[#2F7F5F]/35"
+      : "border-[var(--wine-deep)]/80";
+  const sectionLabelClass = isCodex
+    ? "text-[#BBD4FF]"
+    : isFragments
+      ? "text-[#BDE9CF]"
+    : "text-[var(--parchment-dim)]";
+  const inputClass = isCodex
+    ? "rounded-md border border-[#60A5FA]/28 bg-[#0B0D12]/80 px-3 py-2 text-sm text-[#E9F1FF] placeholder:text-[#9CB5E0]/60 focus:border-[#60A5FA]/65 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/25"
+    : isFragments
+      ? "rounded-md border border-[#2F7F5F]/45 bg-[#0B1210]/80 px-3 py-2 text-sm text-[#E9FFF2] placeholder:text-[#A0CCB7]/58 focus:border-[#4ADE80]/65 focus:outline-none focus:ring-2 focus:ring-[#4ADE80]/20"
+    : "rounded-md border border-[var(--wine-deep)]/90 bg-[var(--void)]/80 px-3 py-2 text-sm text-[var(--parchment)] placeholder:text-[var(--mist)]/50 focus:border-[var(--gold)]/50 focus:outline-none";
+  const submitClass = isCodex
+    ? "shrink-0 rounded-md border border-[#60A5FA]/45 bg-[linear-gradient(180deg,#3B82F6_0%,#2A66CD_100%)] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(59,130,246,0.25)] transition-[box-shadow,filter] hover:brightness-105 hover:shadow-[0_0_22px_rgba(96,165,250,0.35)] disabled:opacity-50"
+    : isFragments
+      ? "shrink-0 rounded-md border border-[#4ADE80]/45 bg-[linear-gradient(180deg,#2F7F5F_0%,#245F48_100%)] px-4 py-2 text-sm font-semibold text-[#ECFFF2] shadow-[0_0_16px_rgba(74,222,128,0.22)] transition-[box-shadow,filter] hover:brightness-105 hover:shadow-[0_0_22px_rgba(134,239,172,0.3)] disabled:opacity-50"
+    : "shrink-0 rounded-md bg-[var(--gold)]/90 px-4 py-2 text-sm font-semibold text-[var(--void)] transition-opacity disabled:opacity-50";
+  const magicMessageClass = isCodex
+    ? "text-[#C8DCFF]"
+    : isFragments
+      ? "text-[#CFF9DD]"
+      : "text-[var(--gold-bright)]/90";
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <button
           type="button"
-          className="rounded-md border border-[var(--gold)]/50 bg-[var(--plum-mid)]/90 px-4 py-2.5 text-sm font-semibold text-[var(--parchment)] transition-colors hover:border-[var(--gold-bright)]/70 hover:bg-[var(--wine)]/50"
+          className={oauthButtonClass}
           onClick={async () => {
             setOauthError(null);
             try {
@@ -75,7 +109,7 @@ export function LoginPanel({ variant, className }: LoginPanelProps) {
         </button>
         <button
           type="button"
-          className="rounded-md border border-[var(--gold)]/50 bg-[var(--plum-mid)]/90 px-4 py-2.5 text-sm font-semibold text-[var(--parchment)] transition-colors hover:border-[var(--gold-bright)]/70 hover:bg-[var(--wine)]/50"
+          className={oauthButtonClass}
           onClick={async () => {
             setOauthError(null);
             try {
@@ -95,8 +129,8 @@ export function LoginPanel({ variant, className }: LoginPanelProps) {
         </p>
       ) : null}
 
-      <div className="border-t border-[var(--wine-deep)]/80 pt-5">
-        <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--parchment-dim)]">
+      <div className={cn("border-t pt-5", sectionBorderClass)}>
+        <p className={cn("mb-2 text-xs font-medium uppercase tracking-[0.12em]", sectionLabelClass)}>
           Email magic link
         </p>
         <form
@@ -131,13 +165,13 @@ export function LoginPanel({ variant, className }: LoginPanelProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="rounded-md border border-[var(--wine-deep)]/90 bg-[var(--void)]/80 px-3 py-2 text-sm text-[var(--parchment)] placeholder:text-[var(--mist)]/50 focus:border-[var(--gold)]/50 focus:outline-none"
+              className={inputClass}
             />
           </label>
           <button
             type="submit"
             disabled={magicBusy}
-            className="shrink-0 rounded-md bg-[var(--gold)]/90 px-4 py-2 text-sm font-semibold text-[var(--void)] transition-opacity disabled:opacity-50"
+            className={submitClass}
           >
             {busyLabel}
           </button>
@@ -148,7 +182,7 @@ export function LoginPanel({ variant, className }: LoginPanelProps) {
           </p>
         ) : null}
         {magicMessage ? (
-          <p className="mt-2 text-sm text-[var(--gold-bright)]/90" role="status">
+          <p className={cn("mt-2 text-sm", magicMessageClass)} role="status">
             {magicMessage}
           </p>
         ) : null}

@@ -20,12 +20,27 @@ export const designTokens = {
   },
 } as const;
 
-/** Brand assets — add `/public/assets/logo-header.png` when the compact nav mark is ready. */
-export const assetPaths = {
-  /** Full lockup (title in artwork) — home hero */
-  logoLockup: "/assets/logo.png",
-  /** Compact mark for header/nav */
-  logoMark: "/assets/logo-header.png",
-  background: "/assets/bg.png",
-  panelTexture: "/assets/panel.png",
+/** Guess the Card — gameplay UI, panels, warm fantasy backdrop. */
+export const guessAssetPaths = {
+  logoLockup: "/assets/guess-logo.png",
+  logoMark: "/assets/guess-logo-header.png",
+  background: "/assets/guess-bg.png",
+  panelTexture: "/assets/guess-panel.png",
 } as const;
+
+/** Codex of Rathe — hub (`/`) arcane identity. */
+export const codexAssetPaths = {
+  logoLockup: "/assets/codex-logo.png",
+  logoMark: "/assets/codex-logo-header.png",
+  background: "/assets/codex-bg.png",
+} as const;
+
+/** Fragments of Rathe — puzzle experience identity. */
+export const fragmentsAssetPaths = {
+  logoLockup: "/assets/fragments-logo.png",
+  logoMark: "/assets/fragments-logo-header.png",
+  background: "/assets/fragments-bg.png",
+} as const;
+
+/** @deprecated Prefer `guessAssetPaths` (same object). */
+export const assetPaths = guessAssetPaths;
