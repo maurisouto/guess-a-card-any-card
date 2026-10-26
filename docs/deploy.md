@@ -10,7 +10,8 @@ El repo es un **monorepo npm**:
 
 Artefactos generados (qué ignorar en git / Vercel): **[generated-files.md](./generated-files.md)**.
 
-La API en **Netlify** solo sirve rutas **HTTP** (`/api/*`). El servidor WebSocket de co-op (`realtime:dev`) sigue siendo otro proceso/host (p. ej. Render o un VPS).
+La API Node de **Render** sirve las rutas HTTP (`/api/*`) y el WebSocket co-op (`/coop-ws`) en el mismo proceso.
+La API en **Netlify** solo sirve HTTP (`/api/*`), por lo que el WebSocket debe seguir viviendo en otro proceso/host si se necesita push.
 
 ## 1. API en Render
 
@@ -21,7 +22,7 @@ La API en **Netlify** solo sirve rutas **HTTP** (`/api/*`). El servidor WebSocke
    - **`DATABASE_URL`** — Postgres del juego (migraciones en `apps/api/prisma`).
    - Opcional: **`PORT`** — Render inyecta `PORT`; la app usa `process.env.PORT ?? 8787`.
    - **`CORS_ORIGIN`** — Origen explícito del front en producción, p. ej. `https://tu-proyecto.vercel.app` (sin barra final). Se pueden separar varios orígenes con comas; el wildcard `*` no está permitido.
-   - Co-op push: **`COOP_REALTIME_NOTIFY_URL`**, **`COOP_REALTIME_SECRET`** si usás el proceso `realtime:dev` aparte.
+   - No se necesita una URL de notificación separada cuando Render ejecuta la API Node unificada. `COOP_REALTIME_NOTIFY_URL` y `COOP_REALTIME_SECRET` quedan disponibles solo para el proceso standalone legacy.
 
 Tras el deploy, probá `GET https://<tu-servicio>.onrender.com/api/health`.
 
@@ -48,7 +49,7 @@ Producción: `GET https://<tu-sitio>.netlify.app/api/health`. En Vercel, **`API_
 3. **Install:** `npm ci` en la raíz (instala workspaces).
 4. Variables:
    - **`API_PROXY_TARGET`** — URL base pública de la API **sin** path `/api`, p. ej. `https://gac-api.onrender.com`. Next reescribe `/api/*` del mismo sitio hacia ese host (evita CORS en el navegador).
-   - Opcional: **`NEXT_PUBLIC_COOP_WS_URL`** — `wss://.../coop-ws` si tenés el servidor WS en producción.
+   - Opcional: **`NEXT_PUBLIC_COOP_WS_URL`** — `wss://.../coop-ws` apuntando a la API Node si el WebSocket no comparte el origen del front.
 
 **Sin** `API_PROXY_TARGET`, las rutas `/api/*` del front no llegan a la API (salvo que vuelvas a correr todo en un solo proceso).
 
@@ -73,7 +74,8 @@ API_PROXY_TARGET=http://127.0.0.1:8787
 npm run dev --workspace=@gac/web
 ```
 
-Opcional — WebSocket co-op: `npm run realtime:dev` (workspace `@gac/api`).
+El flujo normal no requiere una tercera terminal: `npm run dev:api` sirve HTTP y `/coop-ws` juntos.
+`npm run realtime:dev` queda como proceso standalone legacy para hosts donde HTTP y WS deban separarse.
 
 ## 4. Base de datos y catálogo
 

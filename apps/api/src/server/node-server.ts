@@ -1,5 +1,6 @@
-import { createAdaptorServer } from "@hono/node-server";
+import { getRequestListener } from "@hono/node-server";
 import type { Server } from "node:http";
+import { createServer } from "node:http";
 import { app } from "@/server/http-app";
 import { attachCoopRealtime, type CoopRealtimeHub } from "@/server/realtime/coop-realtime";
 
@@ -9,7 +10,7 @@ export type ApiNodeServer = {
 };
 
 export function createApiNodeServer(): ApiNodeServer {
-  const server = createAdaptorServer({ fetch: app.fetch }) as Server;
+  const server: Server = createServer(getRequestListener(app.fetch));
   const realtime = attachCoopRealtime(server);
   return { server, realtime };
 }
