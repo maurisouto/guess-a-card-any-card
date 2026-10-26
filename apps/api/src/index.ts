@@ -1,11 +1,11 @@
 import "./load-env";
-import { serve } from "@hono/node-server";
-import { app } from "./server/http-app";
+import { createApiNodeServer } from "./server/node-server";
 
 const port = Number(process.env.PORT ?? process.env.API_PORT ?? "8787") || 8787;
+const { server } = createApiNodeServer();
 
-serve({ fetch: app.fetch, port }, (info) => {
+server.listen(port, () => {
   console.log(
-    `[gac-api] http://127.0.0.1:${info.port}/api/health (coop, single player)`,
+    `[gac-api] http://127.0.0.1:${port}/api/health (http + coop ws /coop-ws)`,
   );
 });
