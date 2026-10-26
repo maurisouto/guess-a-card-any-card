@@ -1,8 +1,21 @@
-/**
- * After HTTP mutations, nudge the optional coop realtime server to push fresh snapshots.
- * No-op when `COOP_REALTIME_NOTIFY_URL` is unset (e.g. Vercel without a companion WS process).
- */
+type LocalCoopRoomNotifier = (roomId: string) => void | Promise<void>;
+
+let localNotifier: LocalCoopRoomNotifier | null = null;
+
+export function setLocalCoopRoomNotifier(notifier: LocalCoopRoomNotifier): () => void {
+  localNotifier = notifier;
+  return () => {
+    if (localNotifier === notifier) localNotifier = null;
+  };
+}
+
+/** Notify the in-process WS hub, falling back to the legacy companion process when configured. */
 export function notifyCoopRoom(roomId: string): void {
+  if (localNotifier) {
+    void localNotifier(roomId);
+    return;
+  }
+
   const base = process.env.COOP_REALTIME_NOTIFY_URL?.trim();
   if (!base || !roomId) return;
 

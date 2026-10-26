@@ -59,6 +59,10 @@ npm run dev:api
 npm run dev
 ```
 
+La API sirve HTTP y el WebSocket de co-op en el mismo proceso y puerto (`8787`). En desarrollo,
+el cliente usa automáticamente `ws://<host>:8787/coop-ws`; `NEXT_PUBLIC_COOP_WS_URL` solo es
+necesaria si el WebSocket vive en otro host. El polling HTTP se mantiene como fallback confiable.
+
 En desarrollo, Next reenvía `/api/*` a `http://127.0.0.1:8787` por defecto. Override: `API_PROXY_TARGET` en `apps/web/.env.local`.
 
 **Prisma:** esquema en `apps/api/prisma`. Cliente generado en `apps/api/src/generated/prisma` (gitignored). `prisma generate` puede correr sin DB vía `apps/api/prisma.config.ts`.
@@ -88,7 +92,7 @@ Front **Vercel**, API **Render** o **Netlify**, variables y proxy: **[docs/deplo
 | `npm run lint` | ESLint del web |
 | `npm test` | Vitest (web + api + shared) |
 | `npm run db:*` | Prisma vía workspace `@gac/api` |
-| `npm run realtime:dev` | Servidor WS co-op (workspace API) |
+| `npm run realtime:dev` | Servidor WS co-op standalone legacy (workspace API) |
 
 ## Documentación
 

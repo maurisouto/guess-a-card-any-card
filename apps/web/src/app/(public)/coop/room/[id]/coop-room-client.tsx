@@ -20,6 +20,14 @@ import { getOrCreateGuestId } from "@/lib/coop/guest-id";
 import { cn } from "@/lib/utils/cn";
 import type { CoopRoomSnapshot } from "@/types/coop-room";
 
+function coopWebSocketUrl(): string | undefined {
+  const configured = process.env.NEXT_PUBLIC_COOP_WS_URL?.trim();
+  if (configured) return configured;
+  if (typeof window === "undefined" || process.env.NODE_ENV === "production") return undefined;
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.hostname}:8787/coop-ws`;
+}
+
 export type CoopRoomClientProps = {
   roomId: string;
 };
@@ -80,8 +88,10 @@ export function CoopRoomClient({ roomId }: CoopRoomClientProps) {
     setNeedsJoin(false);
   }, []);
 
+  const wsUrl = coopWebSocketUrl();
+
   useCoopRoomRealtime({
-    wsUrl: process.env.NEXT_PUBLIC_COOP_WS_URL,
+    wsUrl,
     roomId,
     guestId,
     enabled: !needsJoin,
@@ -104,8 +114,7 @@ export function CoopRoomClient({ roomId }: CoopRoomClientProps) {
 
   useEffect(() => {
     const hasPush =
-      typeof process.env.NEXT_PUBLIC_COOP_WS_URL === "string" &&
-      process.env.NEXT_PUBLIC_COOP_WS_URL.length > 0;
+      Boolean(wsUrl);
     const g = snap?.game;
     const terminalGame =
       g &&

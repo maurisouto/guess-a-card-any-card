@@ -24,8 +24,7 @@ flowchart LR
   Next -->|"rewrite /api/*"| Hono["apps/api"]
   Hono --> PG[(PostgreSQL)]
   Hono --> Catalog["In-memory FAB catalog"]
-  Browser -->|"optional"| WS["Co-op WS process"]
-  Hono -->|"notify"| WS
+  Browser -->|"optional WS / polling fallback"| Hono
 ```
 
 ## Three product surfaces (one auth account)
@@ -83,9 +82,11 @@ See **[database.md](./database.md)**.
 |---------|------|---------|
 | API | 8787 | `npm run dev:api` |
 | Web | 3000 | `npm run dev` |
-| Co-op WS | 3010 | `npm run realtime:dev` |
+| Co-op WS | 8787 (`/coop-ws`) | `npm run dev:api` (same Node process as HTTP) |
 
 Next dev proxies `/api/*` → `http://127.0.0.1:8787` unless `API_PROXY_TARGET` is set (`next.config.ts`).
+The API Node process also upgrades `/coop-ws`; co-op HTTP polling remains the fallback when WebSocket
+connection or delivery is unavailable. `npm run realtime:dev` is retained only for legacy standalone use.
 
 ## Testing
 

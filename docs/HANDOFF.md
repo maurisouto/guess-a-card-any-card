@@ -66,7 +66,7 @@ Plantilla: **`.env.example`** (raíz; la API también lee `apps/api/.env` si exi
 | `NEXT_PUBLIC_SUPABASE_*` | Web | Login en navegador |
 | `CORS_ORIGIN` | API prod | Origen del front (Vercel) |
 | `API_PROXY_TARGET` | Web prod | URL base de la API (sin `/api`) |
-| `COOP_REALTIME_*` | API + proceso WS | Co-op en tiempo real (opcional) |
+| `NEXT_PUBLIC_COOP_WS_URL` | Web | Override opcional del endpoint WS co-op |
 
 Para habilitar **Sign in** en el hub durante desarrollo local, completá en el `.env`
 raíz (o `apps/web/.env.local`) `NEXT_PUBLIC_SUPABASE_URL` y
@@ -239,7 +239,7 @@ Tests de cableado Fragments (sin RTL): `apps/web/src/features/fragments/*-wiring
 1. **Fragments:** deep links Hall → filtros; “tu posición” en leaderboard; opcional verificación de puzzle en servidor.
 2. **Guess:** seguir roadmap en BLUEPRINT_PRO (modos ya parcialmente implementados).
 3. **Auth:** alinear `users.id` con `auth.users.id` si aún hay desvíos.
-4. **Co-op WS:** documentar host de `realtime:dev` en prod si se usa.
+4. **Co-op WS:** el servidor Node de la API atiende HTTP y `/coop-ws` en el mismo proceso; el polling HTTP sigue siendo fallback.
 
 ---
 
