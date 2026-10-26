@@ -58,4 +58,19 @@ describe("API protection middleware", () => {
     expect(declared.status).toBe(413);
     expect(chunked.status).toBe(413);
   });
+
+  it("does not let a rejected oversized request avoid the caller rate limit", async () => {
+    const api = app({ maxRequests: 1, windowMs: 60_000, maxBodyBytes: 4 });
+    const headers = { "content-type": "application/json", "content-length": "5" };
+
+    const oversized = await api.request("http://localhost/payload", {
+      method: "POST",
+      headers,
+      body: "12345",
+    });
+    const repeated = await api.request("http://localhost/health");
+
+    expect(oversized.status).toBe(413);
+    expect(repeated.status).toBe(429);
+  });
 });

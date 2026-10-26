@@ -25,4 +25,8 @@ describe("CORS configuration", () => {
     expect(corsOriginForRequest(allowed, "https://codex.example.com")).toBe("https://codex.example.com");
     expect(corsOriginForRequest(allowed, "https://evil.example.com")).toBe("");
   });
+
+  it("does not treat an absent Origin as an allowed cross-origin request", () => {
+    expect(corsOriginForRequest(["https://codex.example.com"], "")).toBe("");
+  });
 });
