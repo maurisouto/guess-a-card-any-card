@@ -20,7 +20,7 @@ La API en **Netlify** solo sirve rutas **HTTP** (`/api/*`). El servidor WebSocke
 4. Variables (mínimo):
    - **`DATABASE_URL`** — Postgres del juego (migraciones en `apps/api/prisma`).
    - Opcional: **`PORT`** — Render inyecta `PORT`; la app usa `process.env.PORT ?? 8787`.
-   - **`CORS_ORIGIN`** — Origen del front en producción, p. ej. `https://tu-proyecto.vercel.app` (sin barra final). Si no está definido, CORS usa `*` (útil solo en desarrollo).
+   - **`CORS_ORIGIN`** — Origen explícito del front en producción, p. ej. `https://tu-proyecto.vercel.app` (sin barra final). Se pueden separar varios orígenes con comas; el wildcard `*` no está permitido.
    - Co-op push: **`COOP_REALTIME_NOTIFY_URL`**, **`COOP_REALTIME_SECRET`** si usás el proceso `realtime:dev` aparte.
 
 Tras el deploy, probá `GET https://<tu-servicio>.onrender.com/api/health`.

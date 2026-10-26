@@ -12,25 +12,15 @@ import { singlePlayerRoutes } from "@/server/single-player-routes";
 import { guestRoutes } from "@/server/guest-routes";
 import { initCardCatalog } from "@/server/services/card-catalog-service";
 import { createApiProtectionMiddleware } from "@/server/api-protection";
+import { corsOriginForRequest, resolveCorsOrigins } from "@/server/cors-config";
 
 initCardCatalog();
 
-const configuredOrigins =
-  process.env.CORS_ORIGIN?.split(",")
-    .map((s) => s.trim())
-    .filter(Boolean) ?? null;
-
-if (process.env.NODE_ENV === "production" && (!configuredOrigins || configuredOrigins.length === 0)) {
-  throw new Error("CORS_ORIGIN must be configured in production.");
-}
 if (process.env.NODE_ENV === "production" && !process.env.GUEST_TOKEN_SECRET?.trim()) {
   throw new Error("GUEST_TOKEN_SECRET must be configured in production.");
 }
 
-const allowedOrigins =
-  configuredOrigins && configuredOrigins.length > 0
-    ? configuredOrigins
-    : ["http://localhost:3000", "http://127.0.0.1:3000"];
+const allowedOrigins = resolveCorsOrigins(process.env.CORS_ORIGIN, process.env.NODE_ENV);
 
 const app = new Hono().basePath("/api");
 
@@ -39,7 +29,7 @@ app.use("/*", createApiProtectionMiddleware());
 app.use(
   "/*",
   cors({
-    origin: (origin) => (allowedOrigins.includes(origin) ? origin : ""),
+    origin: (origin) => corsOriginForRequest(allowedOrigins, origin),
     allowHeaders: ["Content-Type", "Authorization", "x-guest-id"],
   }),
 );
