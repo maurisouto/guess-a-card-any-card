@@ -68,6 +68,14 @@ Plantilla: **`.env.example`** (raíz; la API también lee `apps/api/.env` si exi
 | `API_PROXY_TARGET` | Web prod | URL base de la API (sin `/api`) |
 | `COOP_REALTIME_*` | API + proceso WS | Co-op en tiempo real (opcional) |
 
+Para habilitar **Sign in** en el hub durante desarrollo local, completá en el `.env`
+raíz (o `apps/web/.env.local`) `NEXT_PUBLIC_SUPABASE_URL` y
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` con los valores públicos de Supabase → Project Settings → API.
+La anon key puede estar expuesta al navegador; nunca debe usarse una service-role key con
+prefijo `NEXT_PUBLIC_`. Reiniciá Next después de cambiar variables públicas. Para OAuth o
+magic links, registrá `http://localhost:3000/auth/callback` en Authentication → URL Configuration
+y habilitá los providers necesarios.
+
 Detalle de deploy: **[deploy.md](./deploy.md)**.
 
 ---
