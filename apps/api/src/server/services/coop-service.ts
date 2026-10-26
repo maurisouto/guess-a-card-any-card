@@ -118,29 +118,38 @@ export async function joinCoopRoom(params: {
     throw new CoopHttpError(409, "The ritual already began — this circle is closed to newcomers.");
   }
 
-  const existing = await prisma.roomPlayer.findFirst({
-    where: { roomId: params.roomId, guestId: params.guestId, leftAt: null },
-  });
-  if (existing) {
-    await prisma.roomPlayer.update({
-      where: { id: existing.id },
+  await prisma.$transaction(async (tx) => {
+    const lobbyClaim = await tx.room.updateMany({
+      where: { id: params.roomId, mode: "COOP", state: RoomState.LOBBY },
+      data: { updatedAt: new Date() },
+    });
+    if (lobbyClaim.count !== 1) {
+      throw new CoopHttpError(409, "The ritual already began — this circle is closed to newcomers.");
+    }
+
+    const existing = await tx.roomPlayer.findFirst({
+      where: { roomId: params.roomId, guestId: params.guestId, leftAt: null },
+    });
+    if (existing) {
+      await tx.roomPlayer.update({
+        where: { id: existing.id },
+        data: {
+          displayName: params.displayName.trim() || existing.displayName,
+          isConnected: true,
+        },
+      });
+      return;
+    }
+
+    await tx.roomPlayer.create({
       data: {
-        displayName: params.displayName.trim() || existing.displayName,
+        roomId: params.roomId,
+        guestId: params.guestId,
+        displayName: params.displayName.trim() || "Seer",
+        isHost: false,
         isConnected: true,
       },
     });
-    notifyCoopRoom(params.roomId);
-    return;
-  }
-
-  await prisma.roomPlayer.create({
-    data: {
-      roomId: params.roomId,
-      guestId: params.guestId,
-      displayName: params.displayName.trim() || "Seer",
-      isHost: false,
-      isConnected: true,
-    },
   });
   notifyCoopRoom(params.roomId);
 }
@@ -155,10 +164,13 @@ export async function updateCoopSelectedSets(params: {
   if (!room || room.state !== "LOBBY") {
     throw new CoopHttpError(409, "Sets can only be chosen before the veil lifts.");
   }
-  await prisma.room.update({
-    where: { id: params.roomId },
+  const updated = await prisma.room.updateMany({
+    where: { id: params.roomId, mode: "COOP", state: RoomState.LOBBY },
     data: { selectedSets: params.selectedSets },
   });
+  if (updated.count !== 1) {
+    throw new CoopHttpError(409, "Sets can only be chosen before the veil lifts.");
+  }
   notifyCoopRoom(params.roomId);
 }
 
@@ -257,13 +269,21 @@ export async function startCoopGame(params: {
       });
     }
 
-    await tx.room.update({
-      where: { id: room.id },
+    const claimed = await tx.room.updateMany({
+      where: {
+        id: room.id,
+        mode: "COOP",
+        state: RoomState.LOBBY,
+        currentGameId: null,
+      },
       data: {
         state: RoomState.IN_PROGRESS,
         currentGameId: game.id,
       },
     });
+    if (claimed.count !== 1) {
+      throw new CoopHttpError(409, "A game already binds this room.");
+    }
 
     return game.id;
   });

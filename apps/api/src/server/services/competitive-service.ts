@@ -1,5 +1,6 @@
 import {
   CompetitivePlayerState,
+  GameMode,
   GameStatus,
   Prisma,
   RoomState,
@@ -321,28 +322,38 @@ export async function joinCompetitiveRoom(params: {
     throw new CompetitiveHttpError(409, "Match already started.");
   }
 
-  const existing = await prisma.roomPlayer.findFirst({
-    where: { roomId: params.roomId, guestId: params.guestId, leftAt: null },
-  });
-  if (existing) {
-    await prisma.roomPlayer.update({
-      where: { id: existing.id },
+  await prisma.$transaction(async (tx) => {
+    const lobbyClaim = await tx.room.updateMany({
+      where: { id: params.roomId, mode: "COMPETITIVE", state: RoomState.LOBBY },
+      data: { updatedAt: new Date() },
+    });
+    if (lobbyClaim.count !== 1) {
+      throw new CompetitiveHttpError(409, "Match already started.");
+    }
+
+    const existing = await tx.roomPlayer.findFirst({
+      where: { roomId: params.roomId, guestId: params.guestId, leftAt: null },
+    });
+    if (existing) {
+      await tx.roomPlayer.update({
+        where: { id: existing.id },
+        data: {
+          displayName: params.displayName.trim() || existing.displayName,
+          isConnected: true,
+        },
+      });
+      return;
+    }
+
+    await tx.roomPlayer.create({
       data: {
-        displayName: params.displayName.trim() || existing.displayName,
+        roomId: params.roomId,
+        guestId: params.guestId,
+        displayName: params.displayName.trim() || "Rival",
+        isHost: false,
         isConnected: true,
       },
     });
-    return;
-  }
-
-  await prisma.roomPlayer.create({
-    data: {
-      roomId: params.roomId,
-      guestId: params.guestId,
-      displayName: params.displayName.trim() || "Rival",
-      isHost: false,
-      isConnected: true,
-    },
   });
 }
 
@@ -356,10 +367,13 @@ export async function updateCompetitiveSelectedSets(params: {
   if (!room || room.state !== RoomState.LOBBY) {
     throw new CompetitiveHttpError(409, "Sets can only be chosen in the lobby.");
   }
-  await prisma.room.update({
-    where: { id: params.roomId },
+  const updated = await prisma.room.updateMany({
+    where: { id: params.roomId, mode: GameMode.COMPETITIVE, state: RoomState.LOBBY },
     data: { selectedSets: params.selectedSets },
   });
+  if (updated.count !== 1) {
+    throw new CompetitiveHttpError(409, "Sets can only be chosen in the lobby.");
+  }
 }
 
 export async function updateCompetitiveTimer(params: {
@@ -376,10 +390,13 @@ export async function updateCompetitiveTimer(params: {
   if (t < 15 || t > 600) {
     throw new CompetitiveHttpError(400, "Timer must be between 15 and 600 seconds.");
   }
-  await prisma.room.update({
-    where: { id: params.roomId },
+  const updated = await prisma.room.updateMany({
+    where: { id: params.roomId, mode: "COMPETITIVE", state: RoomState.LOBBY },
     data: { timerPerStepSeconds: t },
   });
+  if (updated.count !== 1) {
+    throw new CompetitiveHttpError(409, "Timer can only be set in the lobby.");
+  }
 }
 
 export async function startCompetitiveGame(params: {
@@ -452,13 +469,21 @@ export async function startCompetitiveGame(params: {
       });
     }
 
-    await tx.room.update({
-      where: { id: room.id },
+    const claimed = await tx.room.updateMany({
+      where: {
+        id: room.id,
+        mode: "COMPETITIVE",
+        state: RoomState.LOBBY,
+        currentGameId: null,
+      },
       data: {
         state: RoomState.IN_PROGRESS,
         currentGameId: game.id,
       },
     });
+    if (claimed.count !== 1) {
+      throw new CompetitiveHttpError(409, "Game already started.");
+    }
 
     return game.id;
   });
