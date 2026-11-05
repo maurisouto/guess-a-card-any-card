@@ -40,17 +40,17 @@ app.get("/health", (c) =>
   c.json({ ok: true, service: "guess-a-card-any-card-api" }),
 );
 
-app.get("/ready", async (c) => {
-  const ready = await isApplicationReady();
-  return c.json({ ok: ready, ready }, ready ? 200 : 503);
-});
-
 app.use("/*", async (c, next) => {
   const state = getApplicationLifecycleState();
   if (state === "shutting_down" || state === "stopped") {
     return c.json({ error: "Service is shutting down." }, 503);
   }
   await next();
+});
+
+app.get("/ready", async (c) => {
+  const ready = await isApplicationReady();
+  return c.json({ ok: ready, ready }, ready ? 200 : 503);
 });
 
 app.route("/me", meRoutes);

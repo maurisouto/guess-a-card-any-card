@@ -50,7 +50,8 @@ If catalog load fails at boot, gameplay routes should not be considered healthy.
 
 | Mount | File | Domain |
 |-------|------|--------|
-| `/health` | `http-app.ts` | Liveness |\n| `/ready` | `http-app.ts` | Readiness (catalog + PostgreSQL + lifecycle) |
+| `/health` | `http-app.ts` | Liveness |
+| `/ready` | `http-app.ts` | Readiness (catalog + PostgreSQL + lifecycle) |
 | `/me` | `me-routes.ts` | Current user |
 | `/profile` | `profile-routes.ts` | Codex / Guess public profiles |
 | `/leaderboard` | `leaderboard-routes.ts` | **Guess only** |
