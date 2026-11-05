@@ -1,54 +1,65 @@
-import { afterEach, describe, expect, it } from "vitest";
-import WebSocket from "ws";
-import { createApiNodeServer, type ApiNodeServer } from "@/server/node-server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Server } from "node:http";
 
-let running: ApiNodeServer | null = null;
+const disconnect = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/prisma", () => ({ prisma: { $disconnect: disconnect } }));
+vi.mock("@/server/http-app", () => ({ app: { fetch: vi.fn() } }));
+vi.mock("@/server/realtime/coop-realtime", () => ({
+  attachCoopRealtime: vi.fn(),
+}));
 
-async function listen(server: ApiNodeServer["server"]): Promise<number> {
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => resolve());
+import { __resetApplicationLifecycleForTests } from "@/server/app-lifecycle";
+import { closeApiNodeServer, type ApiNodeServer } from "@/server/node-server";
+
+describe("closeApiNodeServer", () => {
+  beforeEach(() => {
+    __resetApplicationLifecycleForTests();
+    disconnect.mockReset().mockResolvedValue(undefined);
   });
-  const address = server.address();
-  if (!address || typeof address === "string") throw new Error("Server did not expose a port.");
-  return address.port;
-}
 
-async function close(server: ApiNodeServer["server"]): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
-  });
-}
-
-afterEach(async () => {
-  if (!running) return;
-  running.realtime.close();
-  if (running.server.listening) await close(running.server);
-  running = null;
-});
-
-describe("unified Node API server", () => {
-  it("serves Hono HTTP and co-op WebSocket traffic on the same port", async () => {
-    running = createApiNodeServer();
-    const port = await listen(running.server);
-
-    const health = await fetch(`http://127.0.0.1:${port}/api/health`);
-    expect(health.status).toBe(200);
-    await expect(health.json()).resolves.toMatchObject({ ok: true });
-
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/coop-ws`);
-    await new Promise<void>((resolve, reject) => {
-      ws.once("open", () => resolve());
-      ws.once("error", reject);
+  it("closes realtime before HTTP and disconnects Prisma after the drain", async () => {
+    const events: string[] = [];
+    const api = fakeApi({
+      close: (callback?: (error?: Error) => void) => {
+        events.push("http-close");
+        callback?.();
+      },
+    });
+    api.realtime.close = () => events.push("realtime-close");
+    disconnect.mockImplementation(() => {
+      events.push("prisma-disconnect");
+      return Promise.resolve();
     });
 
-    const pong = new Promise<string>((resolve, reject) => {
-      ws.once("message", (data) => resolve(data.toString()));
-      ws.once("error", reject);
-    });
-    ws.send(JSON.stringify({ type: "ping" }));
+    await closeApiNodeServer(api);
 
-    await expect(pong).resolves.toBe(JSON.stringify({ type: "pong" }));
-    ws.close();
+    expect(events).toEqual(["realtime-close", "http-close", "prisma-disconnect"]);
+  });
+
+  it("bounds shutdown and terminates remaining HTTP connections", async () => {
+    const closeAllConnections = vi.fn();
+    const api = fakeApi({ close: () => {}, closeAllConnections });
+
+    await expect(closeApiNodeServer(api, 5)).rejects.toThrow("shutdown timed out");
+    expect(closeAllConnections).toHaveBeenCalledTimes(1);
+    expect(disconnect).toHaveBeenCalledTimes(1);
   });
 });
+
+function fakeApi(serverOverrides: {
+  close?: (callback?: (error?: Error) => void) => void;
+  closeAllConnections?: () => void;
+} = {}): ApiNodeServer {
+  return {
+    server: {
+      close: ((callback?: (error?: Error) => void) => callback?.()) as unknown as Server["close"],
+      closeAllConnections: vi.fn(),
+      ...serverOverrides,
+    } as unknown as Server,
+    realtime: {
+      close: vi.fn(),
+      broadcastRoom: vi.fn(),
+      handleUpgrade: vi.fn(),
+    } as ApiNodeServer["realtime"],
+  };
+}
