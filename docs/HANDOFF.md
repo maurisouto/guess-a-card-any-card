@@ -198,7 +198,7 @@ Tests de cableado Fragments (sin RTL): `apps/web/src/features/fragments/*-wiring
 ## 9. Despliegue (checklist nuevo maintainer)
 
 1. Postgres con migraciones aplicadas (`db:deploy` en build API).
-2. API en Render/Netlify con `DATABASE_URL`, `CORS_ORIGIN`, Supabase JWKS si hay auth.
+2. API en Render con `DATABASE_URL`, `CORS_ORIGIN`, Supabase JWKS si hay auth.
 3. Vercel (web) con `API_PROXY_TARGET` apuntando a la API.
 4. Supabase: URLs de callback `.../auth/callback` en Authentication.
 5. Tras deploy API: reinicio carga catálogo FAB (si falla boot, no hay cartas).

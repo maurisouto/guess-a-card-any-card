@@ -20,7 +20,7 @@ Usar al transferir el repositorio a otro usuario u organización.
 ## Hosting
 
 - [ ] Acceso a Vercel (proyecto web)
-- [ ] Acceso a Render/Netlify (API)
+- [ ] Acceso a Render (API)
 - [ ] Confirmar que el build de API ejecuta `npm run db:deploy`
 - [ ] Smoke post-deploy: `/api/health`, `/`, `/puzzle`, `/puzzle/leaderboard`
 

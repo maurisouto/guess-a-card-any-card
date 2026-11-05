@@ -18,8 +18,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "realtime:dev": "tsx scripts/coop-realtime-server.ts",
-    "postinstall": "prisma generate",
-    "build:fn": "node scripts/build-netlify-fn.mjs"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@flesh-and-blood/cards": "^3.6.239",

@@ -14,7 +14,7 @@ En la raíz del repo: **[README.md](../README.md)** (setup rápido) · **[AGENTS
 
 | Archivo | Tema |
 |---------|------|
-| [deploy.md](./deploy.md) | Vercel, Render, Netlify, variables |
+| [deploy.md](./deploy.md) | Vercel, Render, variables |
 | [database.md](./database.md) | Postgres, migraciones, catálogo |
 | [migrations.md](./migrations.md) | Flujo de migraciones |
 | [generated-files.md](./generated-files.md) | Qué no commitear |
