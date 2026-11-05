@@ -1,17 +1,16 @@
-# Publicar el juego (Vercel + Render / Netlify)
+# Publicar el juego (Vercel + Render)
 
 El repo es un **monorepo npm**:
 
 | Paquete | Rol | Deploy típico |
 |--------|-----|----------------|
 | `apps/web` | Next.js (UI) | **Vercel** |
-| `apps/api` | Hono + Prisma + Postgres | **Render** (proceso Node largo) o **Netlify Functions** (HTTP serverless) |
+| `apps/api` | Hono + Prisma + Postgres | **Render** (proceso Node largo) |
 | `packages/shared` | Tipos y protocolo WS (co-op) | No se despliega solo |
 
 Artefactos generados (qué ignorar en git / Vercel): **[generated-files.md](./generated-files.md)**.
 
 La API Node de **Render** sirve las rutas HTTP (`/api/*`) y el WebSocket co-op (`/coop-ws`) en el mismo proceso.
-La API en **Netlify** solo sirve HTTP (`/api/*`), por lo que el WebSocket debe seguir viviendo en otro proceso/host si se necesita push.
 
 ## 1. API en Render
 
@@ -25,22 +24,6 @@ La API en **Netlify** solo sirve HTTP (`/api/*`), por lo que el WebSocket debe s
    - No se necesita una URL de notificación separada cuando Render ejecuta la API Node unificada. `COOP_REALTIME_NOTIFY_URL` y `COOP_REALTIME_SECRET` quedan disponibles solo para el proceso standalone legacy.
 
 Tras el deploy, probá `GET https://<tu-servicio>.onrender.com/api/health`.
-
-## 1b. API en Netlify
-
-Configuración en `apps/api/netlify.toml` + `apps/api/netlify/functions/gac-api.mts` (Hono con `hono/netlify` y `path: /api/*`).
-
-1. Nuevo sitio en Netlify desde el mismo repo.
-2. **Base directory:** `apps/api`.
-3. **Build command:** dejá el del `netlify.toml` (`npm run db:deploy` = `prisma migrate deploy`). Requiere **`DATABASE_URL`** también en tiempo de build (migraciones).
-4. **Install command:** `cd ../.. && npm ci` (instala el monorepo desde la raíz).
-5. **Publish directory:** `apps/api/netlify/public` desde la raíz del repo (o vacío si solo usás `netlify.toml`: ahí ya está definido).
-6. Variables (UI de Netlify, scope Build + Functions):
-   - **`DATABASE_URL`**
-   - **`CORS_ORIGIN`** — dominio del front (p. ej. Vercel), recomendado en producción.
-   - Opcional: **`COOP_REALTIME_NOTIFY_URL`**, **`COOP_REALTIME_SECRET`**, **`DATABASE_SSL_REJECT_UNAUTHORIZED`**
-
-Producción: `GET https://<tu-sitio>.netlify.app/api/health`. En Vercel, **`API_PROXY_TARGET`** = `https://<tu-sitio>.netlify.app` (sin `/api`).
 
 ## 2. Front en Vercel
 

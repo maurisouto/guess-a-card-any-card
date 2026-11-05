@@ -11,7 +11,7 @@ Card content comes from **`@flesh-and-blood/cards`** via an in-memory catalog lo
 | Package | Role | Deploy típico |
 |---------|------|----------------|
 | `apps/web` | Next.js UI | **Vercel** |
-| `apps/api` | Hono + Prisma + REST `/api/*` | **Render** / Netlify Functions |
+| `apps/api` | Hono + Prisma + REST `/api/*` | **Render** |
 | `packages/shared` | Tipos compartidos (reveal, co-op WS) | (no se despliega solo) |
 
 Artefactos generados: **[docs/generated-files.md](./docs/generated-files.md)**.
@@ -79,7 +79,7 @@ Política y modelo catálogo-en-runtime: **[docs/database.md](./docs/database.md
 
 ## Deploy
 
-Front **Vercel**, API **Render** o **Netlify**, variables y proxy: **[docs/deploy.md](./docs/deploy.md)**.
+Front **Vercel**, API **Render**, variables y proxy: **[docs/deploy.md](./docs/deploy.md)**.
 
 ## Scripts (raíz)
 

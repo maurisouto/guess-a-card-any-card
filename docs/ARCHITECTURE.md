@@ -123,5 +123,5 @@ cd apps/api && npx tsc --noEmit
 | [HANDOFF.md](./HANDOFF.md) | Repo transfer / onboarding (ES) |
 | [FRAGMENTS.md](./FRAGMENTS.md) | Fragments feature map |
 | [BLUEPRINT_PRO.md](./BLUEPRINT_PRO.md) | Product vision (§0.1 = current catalog model) |
-| [deploy.md](./deploy.md) | Vercel + Render/Netlify |
+| [deploy.md](./deploy.md) | Vercel + Render |
 | [generated-files.md](./generated-files.md) | What not to commit |
