@@ -62,7 +62,20 @@ export function useCoopRoomRealtime(options: UseCoopRoomRealtimeOptions): void {
 
       ws.onopen = async () => {
         attempt = 0;
-        const guestToken = await getOrCreateGuestToken();
+        let guestToken: string;
+        try {
+          guestToken = await getOrCreateGuestToken();
+        } catch {
+          // Guest initialization latches its failure; stop this socket from reconnecting forever.
+          closed = true;
+          clearTimer();
+          try {
+            ws?.close();
+          } catch {
+            /* */
+          }
+          return;
+        }
         ws?.send(
           JSON.stringify({
             type: "subscribe",
