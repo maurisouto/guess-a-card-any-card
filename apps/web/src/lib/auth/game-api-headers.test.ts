@@ -80,4 +80,30 @@ describe("buildGameApiRequestHeaders", () => {
     expect(headers.get("Authorization")).toBeNull();
     expect(getOrCreateGuestToken).toHaveBeenCalledTimes(1);
   });
+
+  it("does not fall back to guest when an authenticated refresh fails", async () => {
+    getOrCreateGuestToken.mockRejectedValue(new Error("guest session unavailable"));
+    getSupabaseBrowserClient.mockReturnValue({
+      auth: {
+        getSession: async () => ({
+          data: {
+            session: {
+              access_token: "expired-user-token",
+              expires_at: Math.floor(Date.now() / 1000) - 1,
+            },
+          },
+        }),
+        refreshSession: async () => ({
+          data: { session: null },
+          error: new Error("refresh failed"),
+        }),
+      },
+    });
+
+    const headers = await buildGameApiRequestHeaders();
+
+    expect(headers.get("Authorization")).toBeNull();
+    expect(headers.get("x-guest-id")).toBeNull();
+    expect(getOrCreateGuestToken).not.toHaveBeenCalled();
+  });
 });
