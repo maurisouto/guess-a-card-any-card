@@ -23,20 +23,23 @@ export function mergeActorAuthHeaders(
  * Proactively refreshes when the session is missing or near expiry so `/api/profile/me` and
  * other authenticated routes do not 401 while the UI still shows a signed-in user.
  */
-export async function getSupabaseAccessTokenForApi(): Promise<string | null> {
+export async function getSupabaseAccessTokenForApi(): Promise<{
+  accessToken: string | null;
+  hasSession: boolean;
+}> {
   if (typeof window === "undefined") {
-    return null;
+    return { accessToken: null, hasSession: false };
   }
   const supabase = getSupabaseBrowserClient();
   if (!supabase) {
-    return null;
+    return { accessToken: null, hasSession: false };
   }
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   if (!session) {
-    return null;
+    return { accessToken: null, hasSession: false };
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -47,12 +50,12 @@ export async function getSupabaseAccessTokenForApi(): Promise<string | null> {
   if (expiresAt < nowSec + skewSec) {
     const { data: refreshed, error } = await supabase.auth.refreshSession();
     if (error || !refreshed.session?.access_token) {
-      return null;
+      return { accessToken: null, hasSession: true };
     }
-    return refreshed.session.access_token;
+    return { accessToken: refreshed.session.access_token, hasSession: true };
   }
 
-  return session.access_token;
+  return { accessToken: session.access_token, hasSession: true };
 }
 
 /** Builds headers for a game API `fetch` (client-side). */
@@ -60,8 +63,11 @@ export async function buildGameApiRequestHeaders(
   base?: HeadersInit,
 ): Promise<Headers> {
   const headers = new Headers(base);
-  const guestId = await getOrCreateGuestToken();
-  const accessToken = await getSupabaseAccessTokenForApi();
-  mergeActorAuthHeaders(headers, guestId, accessToken);
+  const { accessToken, hasSession } = await getSupabaseAccessTokenForApi();
+  if (accessToken || hasSession) {
+    mergeActorAuthHeaders(headers, "", accessToken);
+    return headers;
+  }
+  mergeActorAuthHeaders(headers, await getOrCreateGuestToken(), null);
   return headers;
 }
