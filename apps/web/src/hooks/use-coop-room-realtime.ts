@@ -62,6 +62,8 @@ export function useCoopRoomRealtime(options: UseCoopRoomRealtimeOptions): void {
 
       ws.onopen = async () => {
         attempt = 0;
+        const socket = ws;
+        if (!socket) return;
         let guestToken: string;
         try {
           guestToken = await getOrCreateGuestToken();
@@ -70,13 +72,14 @@ export function useCoopRoomRealtime(options: UseCoopRoomRealtimeOptions): void {
           closed = true;
           clearTimer();
           try {
-            ws?.close();
+            socket.close();
           } catch {
             /* */
           }
           return;
         }
-        ws?.send(
+        if (closed || ws !== socket || socket.readyState !== WebSocket.OPEN) return;
+        socket.send(
           JSON.stringify({
             type: "subscribe",
             roomId,
