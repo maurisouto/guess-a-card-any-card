@@ -60,8 +60,11 @@ export async function buildGameApiRequestHeaders(
   base?: HeadersInit,
 ): Promise<Headers> {
   const headers = new Headers(base);
-  const guestId = await getOrCreateGuestToken();
   const accessToken = await getSupabaseAccessTokenForApi();
-  mergeActorAuthHeaders(headers, guestId, accessToken);
+  if (accessToken) {
+    mergeActorAuthHeaders(headers, "", accessToken);
+    return headers;
+  }
+  mergeActorAuthHeaders(headers, await getOrCreateGuestToken(), null);
   return headers;
 }
